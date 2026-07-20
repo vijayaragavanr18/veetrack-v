@@ -18,6 +18,7 @@ from app.domain.interfaces.services import EntityMention
 # trigram_similarity helpers
 # ---------------------------------------------------------------------------
 
+
 def test_trigram_similarity_identical() -> None:
     assert trigram_similarity("Tesla", "Tesla") == pytest.approx(1.0)
 
@@ -45,6 +46,7 @@ def test_trigram_similarity_short_text() -> None:
 # label_to_entity_type
 # ---------------------------------------------------------------------------
 
+
 def test_label_organization_maps_to_company() -> None:
     assert label_to_entity_type("organization") == "company"
 
@@ -60,6 +62,7 @@ def test_label_unknown_maps_to_topic() -> None:
 # ---------------------------------------------------------------------------
 # ResolveEntity — exact match
 # ---------------------------------------------------------------------------
+
 
 def _mention(text: str, label: str = "organization", score: float = 0.9) -> EntityMention:
     return EntityMention(text=text, label=label, score=score)
@@ -102,6 +105,7 @@ async def test_exact_match_on_lowercase_adds_alias() -> None:
 # ResolveEntity — fuzzy match
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_fuzzy_match_links_and_adds_alias() -> None:
     repo = MagicMock()
@@ -137,6 +141,7 @@ async def test_fuzzy_below_threshold_creates_new() -> None:
 # ---------------------------------------------------------------------------
 # ResolveEntity — no match → create new
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_no_match_creates_new_entity() -> None:

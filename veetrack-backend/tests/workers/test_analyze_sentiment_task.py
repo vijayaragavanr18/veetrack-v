@@ -4,21 +4,19 @@ from __future__ import annotations
 
 import time
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from workers.tasks.nlp.analyze_sentiment import (
-    _DEFAULT_SENTIMENT_MODEL,
     _LABEL_MAP,
-    _MIN_WORD_COUNT,
     _classify,
 )
-
 
 # ---------------------------------------------------------------------------
 # _label_map coverage
 # ---------------------------------------------------------------------------
+
 
 def test_label_map_covers_all_five_classes() -> None:
     assert _LABEL_MAP["very positive"] == "positive"
@@ -31,6 +29,7 @@ def test_label_map_covers_all_five_classes() -> None:
 # ---------------------------------------------------------------------------
 # _classify helper
 # ---------------------------------------------------------------------------
+
 
 def _make_pipe(label: str, score: float) -> Any:
     return MagicMock(return_value=[{"label": label, "score": score}])
@@ -52,7 +51,9 @@ def test_classify_negative() -> None:
 
 def test_classify_neutral() -> None:
     pipe = _make_pipe("neutral", 0.71)
-    label, score, low_conf = _classify(pipe, "The board met on Tuesday to review quarterly figures.")
+    label, score, low_conf = _classify(
+        pipe, "The board met on Tuesday to review quarterly figures."
+    )
     assert label == "neutral"
 
 
@@ -95,6 +96,7 @@ def test_classify_very_negative_maps_to_negative() -> None:
 # Batch throughput: batch must be faster than one-at-a-time
 # ---------------------------------------------------------------------------
 
+
 def test_batch_faster_than_one_at_a_time() -> None:
     """
     Verifies that calling the pipeline with a list is faster than N individual
@@ -128,11 +130,11 @@ def test_batch_faster_than_one_at_a_time() -> None:
     batch_s = time.perf_counter() - t0
 
     print(
-        f"\n[benchmark] one-at-a-time: {one_at_a_time_s*1000:.1f} ms | "
-        f"batch: {batch_s*1000:.1f} ms | "
+        f"\n[benchmark] one-at-a-time: {one_at_a_time_s * 1000:.1f} ms | "
+        f"batch: {batch_s * 1000:.1f} ms | "
         f"speedup: {one_at_a_time_s / batch_s:.1f}×"
     )
     assert batch_s < one_at_a_time_s, (
-        f"Batch ({batch_s*1000:.1f} ms) should be faster than "
-        f"one-at-a-time ({one_at_a_time_s*1000:.1f} ms)"
+        f"Batch ({batch_s * 1000:.1f} ms) should be faster than "
+        f"one-at-a-time ({one_at_a_time_s * 1000:.1f} ms)"
     )

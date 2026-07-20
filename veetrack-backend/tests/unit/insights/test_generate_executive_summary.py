@@ -27,6 +27,7 @@ def _make_articles(n: int) -> list[ArticleInput]:
 # Happy path
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_run_returns_summary_for_sufficient_articles() -> None:
     mock_gateway = AsyncMock()
@@ -56,6 +57,7 @@ async def test_run_returns_summary_for_sufficient_articles() -> None:
 # ---------------------------------------------------------------------------
 # Skipped — too few articles
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_run_skips_when_too_few_articles() -> None:
@@ -91,6 +93,7 @@ async def test_run_skips_empty_articles() -> None:
 # Gateway exception propagates
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_run_propagates_gateway_error() -> None:
     mock_gateway = AsyncMock()
@@ -106,13 +109,12 @@ async def test_run_propagates_gateway_error() -> None:
 # Custom min_articles threshold respected
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_min_articles_threshold_configurable() -> None:
     mock_gateway = AsyncMock()
     mock_gateway.model_name = "m"
-    mock_gateway.complete_json = AsyncMock(
-        return_value={"what_happened": "x", "why_happened": "y"}
-    )
+    mock_gateway.complete_json = AsyncMock(return_value={"what_happened": "x", "why_happened": "y"})
 
     # min_articles=1 — even single article should run
     use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=1)
@@ -124,13 +126,12 @@ async def test_min_articles_threshold_configurable() -> None:
 # Prompt version recorded
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_result_includes_prompt_version() -> None:
     mock_gateway = AsyncMock()
     mock_gateway.model_name = "m"
-    mock_gateway.complete_json = AsyncMock(
-        return_value={"what_happened": "A", "why_happened": "B"}
-    )
+    mock_gateway.complete_json = AsyncMock(return_value={"what_happened": "A", "why_happened": "B"})
 
     use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=3)
     result = await use_case.run("s", "t", _make_articles(3), ["Entity1"])

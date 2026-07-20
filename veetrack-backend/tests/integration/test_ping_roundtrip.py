@@ -98,7 +98,12 @@ def test_ping_worker_returns_ok_with_eager_execution() -> None:
         # Import the task so Celery knows about it in eager mode
         import sys
 
-        sys.path.insert(0, str(__file__).replace("apps/api/tests/integration/test_ping_roundtrip.py", "apps/workers"))
+        sys.path.insert(
+            0,
+            str(__file__).replace(
+                "apps/api/tests/integration/test_ping_roundtrip.py", "apps/workers"
+            ),
+        )
         from app.main import create_app
 
         client = TestClient(create_app(), raise_server_exceptions=True)

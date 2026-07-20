@@ -27,6 +27,7 @@ SINCE = datetime(2020, 1, 1, tzinfo=UTC)
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 async def redis() -> fakeredis.FakeRedis:
     return fakeredis.FakeRedis(decode_responses=False)
@@ -54,6 +55,7 @@ def _make_connector(
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
+
 
 def test_video_url() -> None:
     assert _video_url("dQw4w9WgXcQ") == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -155,6 +157,7 @@ def test_map_video_to_article_falls_back_to_uploader() -> None:
 # ---------------------------------------------------------------------------
 # YouTubeConnector.fetch — search_fn + transcript API mocked
 # ---------------------------------------------------------------------------
+
 
 def _make_video(vid_id: str, upload_date: str = "20241210") -> dict:
     return {
@@ -296,9 +299,7 @@ async def test_fetch_records_failure_on_search_error(
 async def test_fetch_mixed_batch_partial_transcripts(limiter: RedisRateLimiter) -> None:
     from youtube_transcript_api import TranscriptsDisabled
 
-    search_fn = MagicMock(
-        return_value=[_make_video("v1"), _make_video("v2"), _make_video("v3")]
-    )
+    search_fn = MagicMock(return_value=[_make_video("v1"), _make_video("v2"), _make_video("v3")])
     api = MagicMock()
     api.fetch.side_effect = [
         _make_fetched("Transcript for v1"),

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends
@@ -37,8 +37,8 @@ router = APIRouter(prefix="/admin/dashboard", tags=["admin"])
 # In-process error counter (incremented by the unhandled exception handler)
 # ---------------------------------------------------------------------------
 
-_error_window: list[float] = []   # timestamps of recent errors (monotonic)
-_ERROR_WINDOW_SECONDS = 3600      # 1-hour sliding window
+_error_window: list[float] = []  # timestamps of recent errors (monotonic)
+_ERROR_WINDOW_SECONDS = 3600  # 1-hour sliding window
 
 
 def record_api_error() -> None:
@@ -99,10 +99,11 @@ async def get_dashboard(
     _: Annotated[object, Depends(require_role(Role.admin))],
 ) -> DashboardResponse:
     """Return the admin dashboard aggregate snapshot."""
+    from redis.asyncio import Redis
+
     from app.core.config import get_settings
     from app.infrastructure.connectors.base import _BUCKET_PREFIX, _OPEN_UNTIL_PREFIX
     from app.infrastructure.db.repositories.source import SqlAlchemySourceRepository
-    from redis.asyncio import Redis
 
     settings = get_settings()
 

@@ -29,8 +29,8 @@ from app.domain.exceptions import ServiceUnavailableError
 logger = structlog.get_logger(__name__)
 
 # Circuit-breaker defaults — callers may override per connector.
-CIRCUIT_FAILURE_THRESHOLD = 5   # consecutive failures before opening
-CIRCUIT_RESET_SECONDS = 120     # seconds until circuit auto-resets
+CIRCUIT_FAILURE_THRESHOLD = 5  # consecutive failures before opening
+CIRCUIT_RESET_SECONDS = 120  # seconds until circuit auto-resets
 
 # Redis key prefixes
 _BUCKET_PREFIX = "vt:ratelimit:"

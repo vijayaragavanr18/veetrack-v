@@ -113,6 +113,7 @@ async def _run_reconcile(
 
             # 4. Run pure reconciliation logic
             from app.application.use_cases.clustering.reconcile_clusters import ReconcileClusters
+
             reconciler = ReconcileClusters(
                 min_cluster_size=min_cluster_size,
                 min_samples=min_samples,
@@ -132,17 +133,13 @@ async def _run_reconcile(
             for merge in ops.merges:
                 # Reassign articles from source story to target
                 await session.execute(
-                    text(
-                        "UPDATE story_articles SET story_id = :target "
-                        "WHERE story_id = :source"
-                    ),
+                    text("UPDATE story_articles SET story_id = :target WHERE story_id = :source"),
                     {"target": merge.target_story_id, "source": merge.source_story_id},
                 )
                 # Archive source story
                 await session.execute(
                     text(
-                        "UPDATE stories SET status = 'archived', updated_at = now() "
-                        "WHERE id = :id"
+                        "UPDATE stories SET status = 'archived', updated_at = now() WHERE id = :id"
                     ),
                     {"id": merge.source_story_id},
                 )

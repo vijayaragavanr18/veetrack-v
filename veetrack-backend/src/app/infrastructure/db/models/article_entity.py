@@ -23,5 +23,9 @@ class ArticleEntityModel(Base):
     )
     relevance_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
-    article: Mapped[ArticleModel] = relationship("ArticleModel", back_populates="article_entities", lazy="raise")
-    entity: Mapped[EntityModel] = relationship("EntityModel", back_populates="article_entities", lazy="raise")
+    article: Mapped[ArticleModel] = relationship(
+        "ArticleModel", back_populates="article_entities", lazy="raise"
+    )
+    entity: Mapped[EntityModel] = relationship(
+        "EntityModel", back_populates="article_entities", lazy="raise"
+    )

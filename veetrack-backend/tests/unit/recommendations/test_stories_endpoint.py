@@ -90,9 +90,7 @@ def _make_client(
     if story_exists:
         from app.domain.entities import Story
 
-        mock_story_repo.get_by_id = AsyncMock(
-            return_value=Story(id="story-1", title="Test")
-        )
+        mock_story_repo.get_by_id = AsyncMock(return_value=Story(id="story-1", title="Test"))
     else:
         mock_story_repo.get_by_id = AsyncMock(side_effect=NotFoundError("not found"))
 
@@ -113,6 +111,7 @@ def _make_client(
 # ---------------------------------------------------------------------------
 # Default view — only approved recommendations
 # ---------------------------------------------------------------------------
+
 
 def test_default_returns_only_approved() -> None:
     recs = [
@@ -140,15 +139,14 @@ def test_default_empty_when_all_pending() -> None:
 # include_pending_review=true — requires analyst+
 # ---------------------------------------------------------------------------
 
+
 def test_analyst_can_see_pending_with_flag() -> None:
     recs = [
         _make_rec("r1", "pr", 0.85, False),
         _make_rec("r2", "exec", 0.45, True),
     ]
     with _make_client(_make_user("analyst"), recs) as client:
-        resp = client.get(
-            "/api/v1/stories/story-1/recommendations?include_pending_review=true"
-        )
+        resp = client.get("/api/v1/stories/story-1/recommendations?include_pending_review=true")
     assert resp.status_code == 200
     assert len(resp.json()) == 2
 
@@ -156,9 +154,7 @@ def test_analyst_can_see_pending_with_flag() -> None:
 def test_admin_can_see_pending_with_flag() -> None:
     recs = [_make_rec("r1", "pr", 0.20, True)]
     with _make_client(_make_user("admin"), recs) as client:
-        resp = client.get(
-            "/api/v1/stories/story-1/recommendations?include_pending_review=true"
-        )
+        resp = client.get("/api/v1/stories/story-1/recommendations?include_pending_review=true")
     assert resp.status_code == 200
     assert len(resp.json()) == 1
 
@@ -166,15 +162,14 @@ def test_admin_can_see_pending_with_flag() -> None:
 def test_viewer_forbidden_from_pending_flag() -> None:
     recs = [_make_rec("r1", "pr", 0.20, True)]
     with _make_client(_make_user("viewer"), recs) as client:
-        resp = client.get(
-            "/api/v1/stories/story-1/recommendations?include_pending_review=true"
-        )
+        resp = client.get("/api/v1/stories/story-1/recommendations?include_pending_review=true")
     assert resp.status_code == 403
 
 
 # ---------------------------------------------------------------------------
 # Story not found → 404
 # ---------------------------------------------------------------------------
+
 
 def test_404_for_unknown_story() -> None:
     with _make_client(_make_user("viewer"), [], story_exists=False) as client:
@@ -186,12 +181,20 @@ def test_404_for_unknown_story() -> None:
 # Response schema
 # ---------------------------------------------------------------------------
 
+
 def test_response_schema_fields_present() -> None:
     recs = [_make_rec("r1", "pr", 0.80, False)]
     with _make_client(_make_user("viewer"), recs) as client:
         resp = client.get("/api/v1/stories/story-1/recommendations")
     assert resp.status_code == 200
     item = resp.json()[0]
-    for field in ("id", "audience", "recommendation_text", "risk_level",
-                  "confidence_score", "needs_human_review", "generated_at"):
+    for field in (
+        "id",
+        "audience",
+        "recommendation_text",
+        "risk_level",
+        "confidence_score",
+        "needs_human_review",
+        "generated_at",
+    ):
         assert field in item

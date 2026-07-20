@@ -36,7 +36,4 @@ async def search_entities(
     """Autocomplete: return canonical entities matching *q* by trigram similarity."""
     repo = SqlAlchemyEntityRepository(session)
     entities = await repo.search_by_name(q, limit=limit)
-    return [
-        EntityResponse(id=e.id, canonical_name=e.canonical_name, type=e.type)
-        for e in entities
-    ]
+    return [EntityResponse(id=e.id, canonical_name=e.canonical_name, type=e.type) for e in entities]

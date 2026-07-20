@@ -24,6 +24,7 @@ from app.application.use_cases.clustering.reconcile_clusters import (
 # update_centroid (shared pure helper)
 # ---------------------------------------------------------------------------
 
+
 def test_update_centroid_normalised() -> None:
     old = [1.0, 0.0, 0.0, 0.0]
     new = [0.0, 1.0, 0.0, 0.0]
@@ -35,6 +36,7 @@ def test_update_centroid_normalised() -> None:
 # ---------------------------------------------------------------------------
 # run_hdbscan smoke tests — well-separated 2D data
 # ---------------------------------------------------------------------------
+
 
 def _two_cluster_data() -> np.ndarray:
     """Two clearly-separated groups: 5 near x=1 and 5 near y=1."""
@@ -73,6 +75,7 @@ def test_run_hdbscan_noise_label_is_minus_one() -> None:
 # ---------------------------------------------------------------------------
 # ReconcileClusters — merge scenario (mocked HDBSCAN)
 # ---------------------------------------------------------------------------
+
 
 def _dummy_emb(n: int) -> np.ndarray:
     return np.zeros((n, 4), dtype=np.float32)

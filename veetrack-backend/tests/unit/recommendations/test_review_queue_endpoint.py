@@ -22,6 +22,7 @@ from app.main import create_app
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _FakeCache:
     async def get(self, k: str) -> bytes | None:
         return None
@@ -71,6 +72,7 @@ def _make_client(user: User, session_execute_side_effects: list[Any] | None = No
 # ---------------------------------------------------------------------------
 # GET /admin/recommendations/pending-review
 # ---------------------------------------------------------------------------
+
 
 def test_list_pending_requires_admin() -> None:
     """Viewer cannot access the pending review queue."""
@@ -124,6 +126,7 @@ def test_list_pending_empty_when_queue_clear() -> None:
 # POST approve
 # ---------------------------------------------------------------------------
 
+
 def test_approve_calls_update_and_audit() -> None:
     approve_row = MagicMock()
     approve_row.id = "rec-1"
@@ -159,6 +162,7 @@ def test_approve_404_when_not_found() -> None:
 # ---------------------------------------------------------------------------
 # POST reject
 # ---------------------------------------------------------------------------
+
 
 def test_reject_deletes_and_audits() -> None:
     delete_row = MagicMock()

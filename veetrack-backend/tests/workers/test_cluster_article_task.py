@@ -8,10 +8,10 @@ import pytest
 
 from workers.tasks.nlp.cluster_article import _cosine_sim, _update_centroid
 
-
 # ---------------------------------------------------------------------------
 # _cosine_sim
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_sim_identical() -> None:
     v = [1.0, 0.0, 0.0, 0.0]
@@ -43,6 +43,7 @@ def test_cosine_sim_near_identical() -> None:
 # ---------------------------------------------------------------------------
 # _update_centroid
 # ---------------------------------------------------------------------------
+
 
 def test_update_centroid_returns_unit_vector() -> None:
     old = [1.0, 0.0, 0.0, 0.0]

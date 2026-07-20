@@ -23,9 +23,7 @@ class SqlAlchemyApiUsageLogRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_current_window(
-        self, source_id: str, window_start: str
-    ) -> QuotaStatus | None:
+    async def get_current_window(self, source_id: str, window_start: str) -> QuotaStatus | None:
         dt = datetime.fromisoformat(window_start)
         stmt = select(ApiUsageLogModel).where(
             ApiUsageLogModel.source_id == source_id,

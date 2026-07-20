@@ -23,5 +23,9 @@ class SourceModel(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     rate_limit_budget: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
 
-    articles: Mapped[list[ArticleModel]] = relationship("ArticleModel", back_populates="source", lazy="raise")
-    api_usage_logs: Mapped[list[ApiUsageLogModel]] = relationship("ApiUsageLogModel", back_populates="source", lazy="raise")
+    articles: Mapped[list[ArticleModel]] = relationship(
+        "ArticleModel", back_populates="source", lazy="raise"
+    )
+    api_usage_logs: Mapped[list[ApiUsageLogModel]] = relationship(
+        "ApiUsageLogModel", back_populates="source", lazy="raise"
+    )

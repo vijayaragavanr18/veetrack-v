@@ -16,6 +16,7 @@ from app.application.use_cases.clustering.assign_to_story import (
 # cosine_similarity
 # ---------------------------------------------------------------------------
 
+
 def _unit(dim: int = 4) -> list[float]:
     v = [1.0] * dim
     n = math.sqrt(sum(x * x for x in v))
@@ -68,6 +69,7 @@ def test_cosine_similarity_near_identical() -> None:
 # update_centroid
 # ---------------------------------------------------------------------------
 
+
 def test_update_centroid_l2_normalised() -> None:
     old = [1.0, 0.0, 0.0, 0.0]
     new = [0.0, 1.0, 0.0, 0.0]
@@ -104,6 +106,7 @@ def test_update_centroid_many_articles_stable() -> None:
 # ---------------------------------------------------------------------------
 # AssignToStory.assign
 # ---------------------------------------------------------------------------
+
 
 def test_assign_joins_existing_story_above_threshold() -> None:
     threshold = 0.75

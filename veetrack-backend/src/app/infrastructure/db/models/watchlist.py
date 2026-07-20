@@ -31,7 +31,13 @@ class WatchlistModel(Base):
     )
     alert_channels_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
-    workspace: Mapped[WorkspaceModel] = relationship("WorkspaceModel", back_populates="watchlists", lazy="raise")
+    workspace: Mapped[WorkspaceModel] = relationship(
+        "WorkspaceModel", back_populates="watchlists", lazy="raise"
+    )
     user: Mapped[UserModel] = relationship("UserModel", back_populates="watchlists", lazy="raise")
-    entity: Mapped[EntityModel] = relationship("EntityModel", back_populates="watchlists", lazy="raise")
-    alerts: Mapped[list[AlertModel]] = relationship("AlertModel", back_populates="watchlist", lazy="raise", cascade="all, delete-orphan")
+    entity: Mapped[EntityModel] = relationship(
+        "EntityModel", back_populates="watchlists", lazy="raise"
+    )
+    alerts: Mapped[list[AlertModel]] = relationship(
+        "AlertModel", back_populates="watchlist", lazy="raise", cascade="all, delete-orphan"
+    )

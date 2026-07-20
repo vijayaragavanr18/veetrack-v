@@ -55,6 +55,7 @@ class ClusterSettings(BaseSettings):
 # Pure helpers
 # ---------------------------------------------------------------------------
 
+
 def _cosine_sim(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
@@ -75,6 +76,7 @@ def _update_centroid(old: list[float], n: int, new_vec: list[float]) -> list[flo
 # ---------------------------------------------------------------------------
 # Redis centroid cache helpers
 # ---------------------------------------------------------------------------
+
 
 async def _load_centroids_from_db(session: Any) -> dict[str, dict[str, Any]]:
     """Load story_id → {centroid, count} from DB into a plain dict."""
@@ -124,6 +126,7 @@ async def _update_centroid_in_cache(
 # ---------------------------------------------------------------------------
 # Core async logic
 # ---------------------------------------------------------------------------
+
 
 async def _run_cluster(
     article_id: str,
@@ -234,7 +237,7 @@ async def _run_cluster(
                     primary_entity_id = await _ensure_uncategorised_entity(session)
 
                 new_story_id = str(uuid.uuid4())
-                title = (headline[:200] if headline else f"Story {new_story_id[:8]}")
+                title = headline[:200] if headline else f"Story {new_story_id[:8]}"
 
                 await session.execute(
                     text(

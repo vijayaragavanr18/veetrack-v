@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from workers.tasks.llm.generate_summary import MIN_ARTICLES_FOR_SUMMARY, SummarySettings
-
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+
 
 def test_min_articles_for_summary_is_positive() -> None:
     assert MIN_ARTICLES_FOR_SUMMARY > 0
@@ -18,6 +16,7 @@ def test_min_articles_for_summary_is_positive() -> None:
 # ---------------------------------------------------------------------------
 # SummarySettings defaults
 # ---------------------------------------------------------------------------
+
 
 def test_settings_default_hosted_model() -> None:
     s = SummarySettings()

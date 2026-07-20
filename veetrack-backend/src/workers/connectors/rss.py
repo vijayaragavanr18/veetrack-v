@@ -117,9 +117,7 @@ class RssClient:
     def _limiter_for(self, url: str) -> RedisRateLimiter:
         host_id = _host_source_id(self._source_id, url)
         if host_id not in self._limiters:
-            self._limiters[host_id] = RedisRateLimiter(
-                self._redis, host_id, self._calls_per_minute
-            )
+            self._limiters[host_id] = RedisRateLimiter(self._redis, host_id, self._calls_per_minute)
         return self._limiters[host_id]
 
     async def fetch(self, since: datetime) -> list[RawArticle]:

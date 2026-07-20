@@ -92,6 +92,7 @@ from app.infrastructure.db.repositories.workspace import SqlAlchemyWorkspaceRepo
 async def _make_source(session: AsyncSession) -> str:
     """Insert a minimal source row and return its id."""
     import uuid
+
     source = SourceModel(id=str(uuid.uuid4()), type="newsdata")
     session.add(source)
     await session.flush()
@@ -176,7 +177,9 @@ async def test_user_save_and_get(db_session: AsyncSession) -> None:
     ws = await _make_workspace(db_session)
     repo = SqlAlchemyUserRepository(db_session)
     user = await repo.save(
-        User(workspace_id=ws.id, email="alice@example.com", role="analyst", hashed_password="hashed")
+        User(
+            workspace_id=ws.id, email="alice@example.com", role="analyst", hashed_password="hashed"
+        )
     )
     fetched = await repo.get_by_id(user.id)
     assert fetched.email == "alice@example.com"
@@ -208,7 +211,9 @@ async def test_user_get_by_email(db_session: AsyncSession) -> None:
 @pytest.mark.asyncio
 async def test_entity_save_and_get(db_session: AsyncSession) -> None:
     repo = SqlAlchemyEntityRepository(db_session)
-    entity = await repo.save(Entity(canonical_name="Apple Inc.", type="company", metadata={"sector": "tech"}))
+    entity = await repo.save(
+        Entity(canonical_name="Apple Inc.", type="company", metadata={"sector": "tech"})
+    )
     fetched = await repo.get_by_id(entity.id)
     assert fetched.canonical_name == "Apple Inc."
     assert fetched.metadata["sector"] == "tech"
@@ -265,7 +270,14 @@ async def test_article_find_by_dedup_hash(db_session: AsyncSession) -> None:
     source_id = await _make_source(db_session)
     repo = SqlAlchemyArticleRepository(db_session)
     await repo.save(
-        Article(source_id=source_id, external_id="e1", url="https://a.com", headline="H", publisher="P", dedup_hash="unique-hash-xyz")
+        Article(
+            source_id=source_id,
+            external_id="e1",
+            url="https://a.com",
+            headline="H",
+            publisher="P",
+            dedup_hash="unique-hash-xyz",
+        )
     )
     found = await repo.find_by_dedup_hash("unique-hash-xyz")
     assert found is not None
@@ -283,11 +295,25 @@ async def test_article_duplicate_dedup_hash_raises_conflict(db_session: AsyncSes
     source_id = await _make_source(db_session)
     repo = SqlAlchemyArticleRepository(db_session)
     await repo.save(
-        Article(source_id=source_id, external_id="e1", url="https://a.com", headline="H", publisher="P", dedup_hash="dup-hash")
+        Article(
+            source_id=source_id,
+            external_id="e1",
+            url="https://a.com",
+            headline="H",
+            publisher="P",
+            dedup_hash="dup-hash",
+        )
     )
     with pytest.raises(ConflictError):
         await repo.save(
-            Article(source_id=source_id, external_id="e2", url="https://b.com", headline="H2", publisher="P", dedup_hash="dup-hash")
+            Article(
+                source_id=source_id,
+                external_id="e2",
+                url="https://b.com",
+                headline="H2",
+                publisher="P",
+                dedup_hash="dup-hash",
+            )
         )
 
 
@@ -301,7 +327,9 @@ async def test_article_duplicate_dedup_hash_raises_conflict(db_session: AsyncSes
 async def test_story_save_and_get(db_session: AsyncSession) -> None:
     entity = await _make_entity(db_session)
     repo = SqlAlchemyStoryRepository(db_session)
-    story = await repo.save(Story(primary_entity_id=entity.id, title="Tesla IPO news", status="active"))
+    story = await repo.save(
+        Story(primary_entity_id=entity.id, title="Tesla IPO news", status="active")
+    )
     fetched = await repo.get_by_id(story.id)
     assert fetched.title == "Tesla IPO news"
     assert fetched.status == "active"
@@ -345,10 +373,24 @@ async def test_article_list_by_story(db_session: AsyncSession) -> None:
 
     article_repo = SqlAlchemyArticleRepository(db_session)
     a1 = await article_repo.save(
-        Article(source_id=source_id, external_id="e1", url="https://a.com/1", headline="H1", publisher="P", dedup_hash="h1")
+        Article(
+            source_id=source_id,
+            external_id="e1",
+            url="https://a.com/1",
+            headline="H1",
+            publisher="P",
+            dedup_hash="h1",
+        )
     )
     a2 = await article_repo.save(
-        Article(source_id=source_id, external_id="e2", url="https://a.com/2", headline="H2", publisher="P", dedup_hash="h2")
+        Article(
+            source_id=source_id,
+            external_id="e2",
+            url="https://a.com/2",
+            headline="H2",
+            publisher="P",
+            dedup_hash="h2",
+        )
     )
     db_session.add(StoryArticleModel(story_id=story.id, article_id=a1.id))
     db_session.add(StoryArticleModel(story_id=story.id, article_id=a2.id))
@@ -407,8 +449,22 @@ async def test_story_recommendation_save_and_list(db_session: AsyncSession) -> N
     story = await _make_story(db_session, entity.id)
     repo = SqlAlchemyStoryRecommendationRepository(db_session)
 
-    await repo.save(StoryRecommendation(story_id=story.id, recommendation_text="Issue a statement", confidence_score=0.9, audience="pr"))
-    await repo.save(StoryRecommendation(story_id=story.id, recommendation_text="Brief the board", confidence_score=0.7, audience="exec"))
+    await repo.save(
+        StoryRecommendation(
+            story_id=story.id,
+            recommendation_text="Issue a statement",
+            confidence_score=0.9,
+            audience="pr",
+        )
+    )
+    await repo.save(
+        StoryRecommendation(
+            story_id=story.id,
+            recommendation_text="Brief the board",
+            confidence_score=0.7,
+            audience="exec",
+        )
+    )
 
     recs = await repo.list_by_story_id(story.id)
     assert len(recs) == 2

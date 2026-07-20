@@ -10,7 +10,7 @@ import pytest
 import respx
 
 from workers.connectors.base import RateLimitExceeded, RedisRateLimiter
-from workers.connectors.newsdata import NewsDataClient, RawArticle, _map_article, _parse_published_at
+from workers.connectors.newsdata import NewsDataClient, _map_article, _parse_published_at
 
 SOURCE_ID = "nd-test"
 SINCE = datetime.now(UTC) - timedelta(hours=1)
@@ -35,6 +35,7 @@ def client(limiter: RedisRateLimiter) -> NewsDataClient:
 # _parse_published_at
 # ---------------------------------------------------------------------------
 
+
 def test_parse_valid() -> None:
     dt = _parse_published_at("2024-12-10 09:15:30")
     assert dt.year == 2024 and dt.tzinfo is not None
@@ -53,6 +54,7 @@ def test_parse_bad_format_returns_now() -> None:
 # ---------------------------------------------------------------------------
 # _map_article
 # ---------------------------------------------------------------------------
+
 
 def test_map_full_item() -> None:
     item = {
@@ -135,9 +137,7 @@ async def test_fetch_skips_invalid_items(client: NewsDataClient) -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_fetch_429_raises_rate_limit(client: NewsDataClient) -> None:
-    respx.get("https://newsdata.io/api/1/news/search").mock(
-        return_value=httpx.Response(429)
-    )
+    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(429))
     with pytest.raises(RateLimitExceeded):
         await client.fetch("test", SINCE)
 
@@ -145,9 +145,7 @@ async def test_fetch_429_raises_rate_limit(client: NewsDataClient) -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_fetch_401_raises_runtime_error(client: NewsDataClient) -> None:
-    respx.get("https://newsdata.io/api/1/news/search").mock(
-        return_value=httpx.Response(401)
-    )
+    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(401))
     with pytest.raises(RuntimeError):
         await client.fetch("test", SINCE)
 
@@ -158,10 +156,8 @@ async def test_fetch_records_failure_on_error(
     redis: fakeredis.FakeRedis, limiter: RedisRateLimiter
 ) -> None:
     c = NewsDataClient(api_key="key", source_id=SOURCE_ID, rate_limiter=limiter)
-    respx.get("https://newsdata.io/api/1/news/search").mock(
-        return_value=httpx.Response(500)
-    )
-    with pytest.raises(Exception):
+    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(500))
+    with pytest.raises(httpx.HTTPStatusError):
         await c.fetch("test", SINCE)
 
     val = await redis.get(f"vt:cb:failures:{SOURCE_ID}")

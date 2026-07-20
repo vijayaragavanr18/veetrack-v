@@ -131,9 +131,7 @@ class NewsDataConnector:
         wait=wait_exponential(multiplier=1, min=2, max=30),
         reraise=True,
     )
-    async def _fetch_with_retry(
-        self, query: str, since: datetime
-    ) -> list[RawArticle]:
+    async def _fetch_with_retry(self, query: str, since: datetime) -> list[RawArticle]:
         from_date = since.strftime("%Y-%m-%d")
         params: dict[str, str] = {
             "apikey": self._api_key,
@@ -158,9 +156,7 @@ class NewsDataConnector:
 
         data: dict[str, Any] = resp.json()
         if data.get("status") != "success":
-            raise ServiceUnavailableError(
-                f"NewsData.io: unexpected status {data.get('status')!r}"
-            )
+            raise ServiceUnavailableError(f"NewsData.io: unexpected status {data.get('status')!r}")
 
         results: list[RawArticle] = []
         for item in data.get("results") or []:

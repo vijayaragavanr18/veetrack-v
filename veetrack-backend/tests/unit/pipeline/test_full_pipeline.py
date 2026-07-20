@@ -16,11 +16,9 @@ import pytest
 
 from app.application.use_cases.clustering.assign_to_story import (
     AssignToStory,
-    AssignmentResult,
-    cosine_similarity,
     update_centroid,
 )
-from app.application.use_cases.embeddings.embed_article import EmbedArticle, EmbedResult
+from app.application.use_cases.embeddings.embed_article import EmbedArticle
 from app.application.use_cases.entities.resolve_entity import (
     ResolveEntity,
     trigram_similarity,
@@ -47,7 +45,7 @@ from app.application.use_cases.search.get_feed import (
     _deserialise_payloads,
     serialise_payloads,
 )
-from app.domain.entities import Entity, EntityType
+from app.domain.entities import Entity
 from app.domain.interfaces.services import EntityMention
 
 # ---------------------------------------------------------------------------
@@ -119,7 +117,14 @@ class _FakeDispatcher:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
 
-    def send(self, task_name: str, *, args: tuple[Any, ...] = (), kwargs: dict[str, Any] | None = None, queue: str | None = None) -> str:
+    def send(
+        self,
+        task_name: str,
+        *,
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] | None = None,
+        queue: str | None = None,
+    ) -> str:
         self.calls.append({"task": task_name, "kwargs": kwargs, "queue": queue})
         return str(uuid.uuid4())
 
@@ -136,6 +141,7 @@ def _make_db_stub(
         if "ANY(:sids)" in sql:
             return []
         return []
+
     return _stub
 
 
@@ -149,6 +155,7 @@ def _unit_vec(dim: int, idx: int) -> list[float]:
 # ---------------------------------------------------------------------------
 # 1. Normalize — strip_html
 # ---------------------------------------------------------------------------
+
 
 def test_strip_html_removes_tags() -> None:
     result = strip_html("<p>Hello <b>world</b>!</p>")
@@ -182,6 +189,7 @@ def test_normalize_article_returns_tuple() -> None:
 # ---------------------------------------------------------------------------
 # 2. Dedup — MinHash/LSH
 # ---------------------------------------------------------------------------
+
 
 def test_near_duplicate_identical_text() -> None:
     text = "This is a test article about Tesla's earnings."
@@ -218,6 +226,7 @@ def test_lsh_index_no_duplicate_for_unrelated_text() -> None:
 # ---------------------------------------------------------------------------
 # 3. Entity resolution
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_entity_resolve_exact_match() -> None:
@@ -274,6 +283,7 @@ def test_trigram_similarity_unrelated() -> None:
 # 4. Embed article
 # ---------------------------------------------------------------------------
 
+
 def test_embed_article_returns_non_zero_vector() -> None:
     service = _FakeEmbeddingService()
     use_case = EmbedArticle(service=service)
@@ -304,6 +314,7 @@ def test_embed_article_batch() -> None:
 # ---------------------------------------------------------------------------
 # 5. Cluster assignment
 # ---------------------------------------------------------------------------
+
 
 def test_assign_to_story_joins_nearest_above_threshold() -> None:
     assigner = AssignToStory(threshold=0.75)
@@ -347,6 +358,7 @@ def test_update_centroid_single_article() -> None:
 # 6. Feed cache round-trip
 # ---------------------------------------------------------------------------
 
+
 def test_feed_cache_serialise_deserialise_round_trip() -> None:
     from app.application.use_cases.search.feed_types import InsightItem, RecommendationItem
 
@@ -360,8 +372,10 @@ def test_feed_cache_serialise_deserialise_round_trip() -> None:
         article_count=5,
         articles=[
             ArticleSummaryItem(
-                id="a1", headline="Tesla beats Q2 earnings",
-                publisher="Reuters", published_at="2026-07-01T00:00:00",
+                id="a1",
+                headline="Tesla beats Q2 earnings",
+                publisher="Reuters",
+                published_at="2026-07-01T00:00:00",
                 sentiment_label="positive",
             )
         ],
@@ -373,9 +387,12 @@ def test_feed_cache_serialise_deserialise_round_trip() -> None:
         cluster_member_ids=["a1", "a2", "a3"],
         recommendations=[
             RecommendationItem(
-                id="r1", audience="exec",
+                id="r1",
+                audience="exec",
                 recommendation_text="Prepare investor comms.",
-                risk_level="low", confidence_score=0.92, needs_human_review=False,
+                risk_level="low",
+                confidence_score=0.92,
+                needs_human_review=False,
             )
         ],
         updated_at="2026-07-16T10:00:00",
@@ -402,9 +419,14 @@ def test_feed_cache_serialise_deserialise_round_trip() -> None:
 def test_feed_cache_multiple_stories_ordered() -> None:
     stories = [
         StoryPayload(
-            id=f"s{i}", title=f"Story {i}", status="active", risk_level="low",
-            primary_entity_id="eid-1", entity_name="Tesla",
-            article_count=i + 1, updated_at="2026-07-16T00:00:00",
+            id=f"s{i}",
+            title=f"Story {i}",
+            status="active",
+            risk_level="low",
+            primary_entity_id="eid-1",
+            entity_name="Tesla",
+            article_count=i + 1,
+            updated_at="2026-07-16T00:00:00",
         )
         for i in range(5)
     ]
@@ -417,21 +439,29 @@ def test_feed_cache_multiple_stories_ordered() -> None:
 # 7. GetFeed — full Fast Path (warm alias + warm feed cache)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_full_fast_path_zero_db_calls() -> None:
     """Fast Path with warm alias + warm feed cache: 0 DB calls, 2 Redis GETs."""
     stories = [
         StoryPayload(
-            id=f"s{i}", title=f"Story {i}", status="active", risk_level="low",
-            primary_entity_id="eid-1", entity_name="Tesla",
-            article_count=2, updated_at="2026-07-16T00:00:00",
+            id=f"s{i}",
+            title=f"Story {i}",
+            status="active",
+            risk_level="low",
+            primary_entity_id="eid-1",
+            entity_name="Tesla",
+            article_count=2,
+            updated_at="2026-07-16T00:00:00",
         )
         for i in range(3)
     ]
-    cache = _FakeCache({
-        "vt:alias:tesla": b"eid-1\x00Tesla, Inc.",
-        feed_cache_key("eid-1"): serialise_payloads(stories),
-    })
+    cache = _FakeCache(
+        {
+            "vt:alias:tesla": b"eid-1\x00Tesla, Inc.",
+            feed_cache_key("eid-1"): serialise_payloads(stories),
+        }
+    )
     db_calls = []
 
     async def _tracking_db(sql: str, params: dict[str, Any]) -> list[dict]:
@@ -466,6 +496,7 @@ async def test_full_cold_path_populates_alias_cache() -> None:
 # ---------------------------------------------------------------------------
 # 8. End-to-end sequential pipeline (in-memory)
 # ---------------------------------------------------------------------------
+
 
 def test_end_to_end_pipeline_normalize_dedup_embed_cluster() -> None:
     """Exercise all pure pipeline stages in sequence without any I/O."""

@@ -52,6 +52,7 @@ _STORY_P95_BUDGET_MS = 80
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _rand_keyword(length: int = 8) -> str:
     """Generate a random keyword guaranteed to be unknown (triggers Cold Path)."""
     return "zt_" + "".join(random.choices(string.ascii_lowercase, k=length))
@@ -208,11 +209,10 @@ def check_latency_budgets(environment: Any, **kwargs: Any) -> None:
                 violations.append(
                     f"  COLD PATH p95 {p95_ms:.0f}ms > budget {_COLD_P95_BUDGET_MS}ms — {path}"
                 )
-        elif "stories" in path:
-            if p95_ms > _STORY_P95_BUDGET_MS:
-                violations.append(
-                    f"  STORY DETAIL p95 {p95_ms:.0f}ms > budget {_STORY_P95_BUDGET_MS}ms — {path}"
-                )
+        elif "stories" in path and p95_ms > _STORY_P95_BUDGET_MS:
+            violations.append(
+                f"  STORY DETAIL p95 {p95_ms:.0f}ms > budget {_STORY_P95_BUDGET_MS}ms — {path}"
+            )
 
     if violations:
         print("\n⚠  LATENCY BUDGET VIOLATIONS:")

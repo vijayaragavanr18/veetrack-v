@@ -13,7 +13,7 @@
  * Mirrors the reference HTML's zone/flap/flapFront/flapBack structure exactly.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMotionValue } from "framer-motion";
 import HalfClip from "./HalfClip";
 import FlipPanel from "./FlipPanel";

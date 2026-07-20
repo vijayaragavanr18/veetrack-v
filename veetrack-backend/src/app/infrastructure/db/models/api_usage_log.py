@@ -26,4 +26,6 @@ class ApiUsageLogModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    source: Mapped[SourceModel] = relationship("SourceModel", back_populates="api_usage_logs", lazy="raise")
+    source: Mapped[SourceModel] = relationship(
+        "SourceModel", back_populates="api_usage_logs", lazy="raise"
+    )

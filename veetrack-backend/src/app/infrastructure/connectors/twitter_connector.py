@@ -191,9 +191,7 @@ class TwitterConnector:
         wait=wait_exponential(multiplier=1, min=2, max=30),
         reraise=True,
     )
-    async def _fetch_with_retry(
-        self, query: str, since: datetime
-    ) -> list[RawArticle]:
+    async def _fetch_with_retry(self, query: str, since: datetime) -> list[RawArticle]:
         # TwitterAPI.io advanced search uses `query` param with Twitter search syntax.
         # We append a `since:YYYY-MM-DD` operator to bound the time window.
         since_str = since.strftime("%Y-%m-%d")
@@ -209,9 +207,7 @@ class TwitterConnector:
         )
 
         if resp.status_code in (401, 403):
-            raise ServiceUnavailableError(
-                f"TwitterAPI.io: auth error {resp.status_code}"
-            )
+            raise ServiceUnavailableError(f"TwitterAPI.io: auth error {resp.status_code}")
         if resp.status_code == 429:
             raise ServiceUnavailableError("TwitterAPI.io: quota exhausted (429)")
         if resp.status_code >= 500:

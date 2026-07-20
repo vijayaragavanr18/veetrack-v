@@ -12,6 +12,7 @@ from app.application.use_cases.pipeline.normalize import (
 # strip_html
 # ---------------------------------------------------------------------------
 
+
 def test_strip_html_basic_tags() -> None:
     html = "<p>Hello <b>world</b>!</p>"
     result = strip_html(html)
@@ -52,6 +53,7 @@ def test_strip_html_plain_text_passthrough() -> None:
 # clean_whitespace
 # ---------------------------------------------------------------------------
 
+
 def test_clean_whitespace_collapses_spaces() -> None:
     assert clean_whitespace("hello   world") == "hello world"
 
@@ -79,6 +81,7 @@ def test_clean_whitespace_unicode_normalised() -> None:
 # ---------------------------------------------------------------------------
 # normalize_article
 # ---------------------------------------------------------------------------
+
 
 def test_normalize_article_strips_html_and_returns_language() -> None:
     html = "<p>Apple announced record quarterly earnings today.</p>"

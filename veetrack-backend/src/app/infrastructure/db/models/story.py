@@ -29,7 +29,9 @@ class StoryModel(Base):
     )
     title: Mapped[str] = mapped_column(String(1024), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", index=True)
-    cluster_centroid: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+    cluster_centroid: Mapped[list[float] | None] = mapped_column(
+        Vector(EMBEDDING_DIM), nullable=True
+    )
     risk_level: Mapped[str] = mapped_column(String(20), nullable=False, default="low")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
@@ -38,11 +40,24 @@ class StoryModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
-    primary_entity: Mapped[EntityModel] = relationship("EntityModel", back_populates="stories", lazy="raise")
-    story_articles: Mapped[list[StoryArticleModel]] = relationship("StoryArticleModel", back_populates="story", lazy="raise", cascade="all, delete-orphan")
-    insights: Mapped[list[StoryInsightModel]] = relationship("StoryInsightModel", back_populates="story", lazy="raise", cascade="all, delete-orphan")
-    recommendations: Mapped[list[StoryRecommendationModel]] = relationship("StoryRecommendationModel", back_populates="story", lazy="raise", cascade="all, delete-orphan")
-    alerts: Mapped[list[AlertModel]] = relationship("AlertModel", back_populates="story", lazy="raise")
+    primary_entity: Mapped[EntityModel] = relationship(
+        "EntityModel", back_populates="stories", lazy="raise"
+    )
+    story_articles: Mapped[list[StoryArticleModel]] = relationship(
+        "StoryArticleModel", back_populates="story", lazy="raise", cascade="all, delete-orphan"
+    )
+    insights: Mapped[list[StoryInsightModel]] = relationship(
+        "StoryInsightModel", back_populates="story", lazy="raise", cascade="all, delete-orphan"
+    )
+    recommendations: Mapped[list[StoryRecommendationModel]] = relationship(
+        "StoryRecommendationModel",
+        back_populates="story",
+        lazy="raise",
+        cascade="all, delete-orphan",
+    )
+    alerts: Mapped[list[AlertModel]] = relationship(
+        "AlertModel", back_populates="story", lazy="raise"
+    )
 
     __table_args__ = (
         Index(

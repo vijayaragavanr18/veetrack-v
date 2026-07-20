@@ -34,11 +34,14 @@ class BuildBrief:
         self._db_query = db_query
 
     async def execute(self, inp: BuildBriefInput) -> BriefDocument:
-        rows = await self._db_query(_STORIES_SQL, {
-            "keyword": f"%{inp.entity_keyword}%",
-            "window_days": inp.window_days,
-            "limit": inp.max_stories * 3,  # fetch extra; rank in Python
-        })
+        rows = await self._db_query(
+            _STORIES_SQL,
+            {
+                "keyword": f"%{inp.entity_keyword}%",
+                "window_days": inp.window_days,
+                "limit": inp.max_stories * 3,  # fetch extra; rank in Python
+            },
+        )
 
         items = [_row_to_item(r) for r in rows]
 

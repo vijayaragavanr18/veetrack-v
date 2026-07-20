@@ -87,7 +87,7 @@ app.conf.update(
             "kwargs": {
                 "workspace_id": "default",
                 "entity_keyword": "Tesla",
-                "recipient_emails": [],   # populated at runtime
+                "recipient_emails": [],  # populated at runtime
                 "window_days": 1,
                 "format": "pdf",
             },

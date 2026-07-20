@@ -22,7 +22,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from workers.celery_app import app, worker_settings
 from workers.connectors.base import CircuitOpen, RateLimitExceeded, RedisRateLimiter
-from workers.connectors.newsdata import NewsDataClient, RawArticle
+from workers.connectors.newsdata import NewsDataClient
 
 logger = structlog.get_logger(__name__)
 
@@ -83,12 +83,9 @@ async def _run_pull(
     window_start = now.replace(second=0, microsecond=0)
 
     async with factory() as session, session.begin():
-        from sqlalchemy import select, text
-        from sqlalchemy.dialects.postgresql import insert as pg_insert
+        from sqlalchemy import text
 
         # Import models inline so Celery doesn't need to resolve the full app layer
-        from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
-        from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
         # Resolve article table via raw SQL to avoid importing API models
         for article in articles:
@@ -176,6 +173,7 @@ async def _run_pull(
 
     for aid in new_article_ids:
         from workers.tasks.nlp.pipeline_orchestrator import dispatch_pipeline
+
         dispatch_pipeline(aid)
 
     logger.info(

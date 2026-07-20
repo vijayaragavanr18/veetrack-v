@@ -13,7 +13,6 @@ No infrastructure imports — all I/O is via in-memory fakes.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -90,13 +89,22 @@ class _FakeDispatcher:
 
 def _story(story_id: str, entity_id: str = "eid-1") -> StoryPayload:
     return StoryPayload(
-        id=story_id, title="T", status="active", risk_level="low",
-        primary_entity_id=entity_id, entity_name="Tesla",
+        id=story_id,
+        title="T",
+        status="active",
+        risk_level="low",
+        primary_entity_id=entity_id,
+        entity_name="Tesla",
         article_count=1,
-        articles=[ArticleSummaryItem(
-            id=f"a-{story_id}", headline="H", publisher="P",
-            published_at="2026-07-16T00:00:00", sentiment_label="neutral",
-        )],
+        articles=[
+            ArticleSummaryItem(
+                id=f"a-{story_id}",
+                headline="H",
+                publisher="P",
+                published_at="2026-07-16T00:00:00",
+                sentiment_label="neutral",
+            )
+        ],
         updated_at="2026-07-16T00:00:00",
     )
 
@@ -207,11 +215,18 @@ async def test_cold_result_cache_populated_on_first_cold_hit() -> None:
 
     cache = _TrackedCache()
     now = datetime(2026, 7, 16, tzinfo=UTC)
-    story_rows = [{
-        "id": "s1", "title": "Story", "status": "active", "risk_level": "low",
-        "primary_entity_id": "eid-1", "updated_at": now,
-        "entity_name": "Tesla", "article_count": 1,
-    }]
+    story_rows = [
+        {
+            "id": "s1",
+            "title": "Story",
+            "status": "active",
+            "risk_level": "low",
+            "primary_entity_id": "eid-1",
+            "updated_at": now,
+            "entity_name": "Tesla",
+            "article_count": 1,
+        }
+    ]
     db = _CountingDB(entity_rows=[], story_rows=story_rows)
     use_case = GetFeed(cache=cache, dispatcher=_FakeDispatcher(), db_query=db)
 
@@ -234,11 +249,18 @@ async def test_cold_result_cache_hit_skips_db() -> None:
     from datetime import UTC, datetime
 
     now = datetime(2026, 7, 16, tzinfo=UTC)
-    story_rows = [{
-        "id": "s1", "title": "Story", "status": "active", "risk_level": "low",
-        "primary_entity_id": "eid-1", "updated_at": now,
-        "entity_name": "Tesla", "article_count": 1,
-    }]
+    story_rows = [
+        {
+            "id": "s1",
+            "title": "Story",
+            "status": "active",
+            "risk_level": "low",
+            "primary_entity_id": "eid-1",
+            "updated_at": now,
+            "entity_name": "Tesla",
+            "article_count": 1,
+        }
+    ]
     # Pre-populate alias cache (empty entity_id) and cold-result cache
     cache = _TrackedCache()
     cache._data[_alias_cache_key("new-keyword")] = b"\x00new-keyword"

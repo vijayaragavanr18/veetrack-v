@@ -17,7 +17,6 @@ from app.application.use_cases.watchlists.list_watchlists import ListWatchlists
 from app.domain.entities.watchlist import AlertRecord, Watchlist
 from app.domain.exceptions import ConflictError, ForbiddenError, NotFoundError
 
-
 # ---------------------------------------------------------------------------
 # Fake repository
 # ---------------------------------------------------------------------------
@@ -52,11 +51,7 @@ class FakeWatchlistRepository:
         entity_id: str,
     ) -> Watchlist | None:
         for w in self._watchlists.values():
-            if (
-                w.workspace_id == workspace_id
-                and w.user_id == user_id
-                and w.entity_id == entity_id
-            ):
+            if w.workspace_id == workspace_id and w.user_id == user_id and w.entity_id == entity_id:
                 return w
         return None
 
@@ -169,9 +164,7 @@ async def test_list_watchlists_returns_only_caller_items() -> None:
 @pytest.mark.asyncio
 async def test_delete_watchlist_removes_entry() -> None:
     repo = FakeWatchlistRepository()
-    created = await CreateWatchlist(repo).execute(
-        CreateWatchlistInput("ws1", "u1", "e1", {})
-    )
+    created = await CreateWatchlist(repo).execute(CreateWatchlistInput("ws1", "u1", "e1", {}))
     await DeleteWatchlist(repo).execute(created.id, "u1")
     items = await ListWatchlists(repo).execute("ws1", "u1")
     assert items == []
@@ -180,9 +173,7 @@ async def test_delete_watchlist_removes_entry() -> None:
 @pytest.mark.asyncio
 async def test_delete_watchlist_wrong_owner_raises_forbidden() -> None:
     repo = FakeWatchlistRepository()
-    created = await CreateWatchlist(repo).execute(
-        CreateWatchlistInput("ws1", "u1", "e1", {})
-    )
+    created = await CreateWatchlist(repo).execute(CreateWatchlistInput("ws1", "u1", "e1", {}))
     with pytest.raises(ForbiddenError):
         await DeleteWatchlist(repo).execute(created.id, "u-other")
 

@@ -32,9 +32,7 @@ class FakeDispatcher:
         if isinstance(redis_key, str) and redis_key:
             timestamp = datetime.now(UTC).isoformat().encode()
             # Run in an event loop to set the value synchronously
-            asyncio.get_event_loop().run_until_complete(
-                self._cache.set(redis_key, timestamp)
-            )
+            asyncio.get_event_loop().run_until_complete(self._cache.set(redis_key, timestamp))
         return "fake-task-id"
 
 
@@ -85,7 +83,14 @@ async def test_ping_worker_timeout_when_no_worker() -> None:
         cache = FakeCacheGateway(available=True)
 
         class NoOpDispatcher:
-            def send(self, task_name: str, *, args: tuple[object, ...] = (), kwargs: dict[str, object] | None = None, queue: str | None = None) -> str:
+            def send(
+                self,
+                task_name: str,
+                *,
+                args: tuple[object, ...] = (),
+                kwargs: dict[str, object] | None = None,
+                queue: str | None = None,
+            ) -> str:
                 return "no-worker-task"
 
         use_case = PingWorker(cache=cache, dispatcher=NoOpDispatcher())  # type: ignore[arg-type]

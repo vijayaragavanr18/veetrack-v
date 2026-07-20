@@ -81,10 +81,7 @@ async def _run_normalize(article_id: str, database_url: str) -> dict[str, Any]:
         clean, lang = _normalize_article_pure(raw_content)
 
         await session.execute(
-            text(
-                "UPDATE articles SET clean_content = :clean, language = :lang "
-                "WHERE id = :id"
-            ),
+            text("UPDATE articles SET clean_content = :clean, language = :lang WHERE id = :id"),
             {"clean": clean, "lang": lang, "id": article_id},
         )
 

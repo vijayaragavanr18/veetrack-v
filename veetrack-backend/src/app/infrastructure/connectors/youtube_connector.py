@@ -231,9 +231,7 @@ class YouTubeConnector:
         )
         return articles
 
-    def _fetch_transcript(
-        self, video_id: str, info: dict[str, Any]
-    ) -> RawArticle | None:
+    def _fetch_transcript(self, video_id: str, info: dict[str, Any]) -> RawArticle | None:
         """Fetch transcript for one video; return None if unavailable."""
         try:
             fetched = self._transcript_api.fetch(video_id, languages=["en", "en-US"])

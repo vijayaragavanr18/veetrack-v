@@ -22,8 +22,8 @@ class EntityAliasModel(Base):
     alias_text: Mapped[str] = mapped_column(String(255), nullable=False)
     alias_type: Mapped[str] = mapped_column(String(20), nullable=False, default="name")
 
-    entity: Mapped[EntityModel] = relationship("EntityModel", back_populates="aliases", lazy="raise")
-
-    __table_args__ = (
-        Index("ix_entity_aliases_alias_text", "alias_text"),
+    entity: Mapped[EntityModel] = relationship(
+        "EntityModel", back_populates="aliases", lazy="raise"
     )
+
+    __table_args__ = (Index("ix_entity_aliases_alias_text", "alias_text"),)

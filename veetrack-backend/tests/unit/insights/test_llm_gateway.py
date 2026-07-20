@@ -47,6 +47,7 @@ def _make_gateway(
 # Routing
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_routes_to_hosted_by_default() -> None:
     gw = _make_gateway()
@@ -78,6 +79,7 @@ async def test_model_name_reflects_default_tier() -> None:
 # Retry on transient error
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_retries_on_transient_error() -> None:
     hosted = AsyncMock()
@@ -106,6 +108,7 @@ async def test_raises_after_max_retries() -> None:
 # ---------------------------------------------------------------------------
 # Circuit breaker does not re-raise ServiceUnavailableError on retry
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_service_unavailable_not_retried() -> None:

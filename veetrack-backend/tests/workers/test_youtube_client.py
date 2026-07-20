@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import fakeredis.aioredis as fakeredis
+import httpx
 import pytest
 
 from workers.connectors.base import RedisRateLimiter
@@ -49,6 +50,7 @@ def _make_client(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def test_video_url() -> None:
     assert _video_url("abc") == "https://www.youtube.com/watch?v=abc"
@@ -114,6 +116,7 @@ def test_map_video_to_article_falls_back_to_uploader() -> None:
 # ---------------------------------------------------------------------------
 # YouTubeClient.fetch
 # ---------------------------------------------------------------------------
+
 
 def _make_video(vid_id: str, upload_date: str = "20241210") -> dict:
     return {
@@ -223,7 +226,7 @@ async def test_fetch_records_failure_on_error(
     search_fn = MagicMock(side_effect=RuntimeError("boom"))
     client = _make_client(limiter, search_fn=search_fn)
 
-    with pytest.raises(Exception):
+    with pytest.raises(RuntimeError):
         await client.fetch("Apple", SINCE)
 
     val = await redis.get(f"vt:cb:failures:{SOURCE_ID}")
@@ -234,9 +237,7 @@ async def test_fetch_records_failure_on_error(
 async def test_fetch_mixed_batch(limiter: RedisRateLimiter) -> None:
     from youtube_transcript_api import TranscriptsDisabled
 
-    search_fn = MagicMock(
-        return_value=[_make_video("v1"), _make_video("v2"), _make_video("v3")]
-    )
+    search_fn = MagicMock(return_value=[_make_video("v1"), _make_video("v2"), _make_video("v3")])
     api = MagicMock()
     api.fetch.side_effect = [
         _make_fetched("v1 transcript"),

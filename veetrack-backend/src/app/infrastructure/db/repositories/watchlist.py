@@ -79,9 +79,7 @@ class SqlAlchemyWatchlistRepository:
             watchlist.entity_id,
         )
         if existing is not None and existing.id != watchlist.id:
-            raise ConflictError(
-                f"Watchlist for entity {watchlist.entity_id!r} already exists"
-            )
+            raise ConflictError(f"Watchlist for entity {watchlist.entity_id!r} already exists")
         row = await self._session.get(WatchlistModel, watchlist.id)
         if row is None:
             row = WatchlistModel(

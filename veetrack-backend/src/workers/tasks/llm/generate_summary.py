@@ -97,9 +97,7 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
             articles = [
                 {
                     "headline": str(row.headline or ""),
-                    "published_at": row.published_at.isoformat()
-                    if row.published_at
-                    else "",
+                    "published_at": row.published_at.isoformat() if row.published_at else "",
                     "clean_content": str(row.clean_content or ""),
                 }
                 for row in art_rows

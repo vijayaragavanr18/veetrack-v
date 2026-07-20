@@ -131,10 +131,7 @@ async def _run_pull(
 
         # Upsert api_usage_log
         existing = await session.execute(
-            text(
-                "SELECT id FROM api_usage_log "
-                "WHERE source_id = :sid AND window_start = :ws"
-            ),
+            text("SELECT id FROM api_usage_log WHERE source_id = :sid AND window_start = :ws"),
             {"sid": source_id, "ws": window_start},
         )
         if existing.first() is None:
@@ -167,6 +164,7 @@ async def _run_pull(
 
     for aid in new_article_ids:
         from workers.tasks.nlp.pipeline_orchestrator import dispatch_pipeline
+
         dispatch_pipeline(aid)
 
     logger.info(

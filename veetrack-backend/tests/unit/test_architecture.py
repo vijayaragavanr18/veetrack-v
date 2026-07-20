@@ -42,8 +42,8 @@ def test_domain_has_no_infrastructure_imports() -> None:
                 if imp.startswith(forbidden):
                     violations.append(f"{py_file.name}: imports '{imp}'")
 
-    assert not violations, (
-        "Domain layer dependency violation(s) detected:\n" + "\n".join(violations)
+    assert not violations, "Domain layer dependency violation(s) detected:\n" + "\n".join(
+        violations
     )
 
 
@@ -61,6 +61,6 @@ def test_application_has_no_infrastructure_imports() -> None:
                 if imp.startswith(forbidden):
                     violations.append(f"{py_file.name}: imports '{imp}'")
 
-    assert not violations, (
-        "Application layer dependency violation(s) detected:\n" + "\n".join(violations)
+    assert not violations, "Application layer dependency violation(s) detected:\n" + "\n".join(
+        violations
     )

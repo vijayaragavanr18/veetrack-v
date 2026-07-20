@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
-    from prometheus_client import Counter, Histogram, start_http_server as _start_http
+    from prometheus_client import Counter, Histogram
 
     _task_started = Counter(
         "celery_tasks_started_total",
@@ -66,10 +66,11 @@ def init_worker_sentry() -> None:
     if not dsn:
         return
     try:
+        import logging as _logging
+
         import sentry_sdk
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.logging import LoggingIntegration
-        import logging as _logging
 
         environment = os.environ.get("ENVIRONMENT", "development")
         sentry_sdk.init(
@@ -122,12 +123,11 @@ def register_celery_signals(app: object) -> None:
                 _task_failed.labels(task_name=task.name, queue=queue).inc()  # type: ignore[attr-defined]
 
     @signals.task_failure.connect
-    def on_task_failure(
-        task_id: str, exception: Exception, task: object, **kwargs: object
-    ) -> None:
+    def on_task_failure(task_id: str, exception: Exception, task: object, **kwargs: object) -> None:
         """Capture unhandled task exceptions into Sentry."""
         try:
             import sentry_sdk
+
             sentry_sdk.capture_exception(exception)
         except ImportError:
             pass

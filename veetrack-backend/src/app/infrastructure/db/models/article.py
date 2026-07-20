@@ -30,7 +30,9 @@ class ArticleModel(Base):
     headline: Mapped[str] = mapped_column(String(1024), nullable=False)
     hero_image_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     publisher: Mapped[str] = mapped_column(String(255), nullable=False)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     raw_content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     clean_content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
@@ -42,9 +44,15 @@ class ArticleModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    source: Mapped[SourceModel] = relationship("SourceModel", back_populates="articles", lazy="raise")
-    article_entities: Mapped[list[ArticleEntityModel]] = relationship("ArticleEntityModel", back_populates="article", lazy="raise", cascade="all, delete-orphan")
-    story_articles: Mapped[list[StoryArticleModel]] = relationship("StoryArticleModel", back_populates="article", lazy="raise")
+    source: Mapped[SourceModel] = relationship(
+        "SourceModel", back_populates="articles", lazy="raise"
+    )
+    article_entities: Mapped[list[ArticleEntityModel]] = relationship(
+        "ArticleEntityModel", back_populates="article", lazy="raise", cascade="all, delete-orphan"
+    )
+    story_articles: Mapped[list[StoryArticleModel]] = relationship(
+        "StoryArticleModel", back_populates="article", lazy="raise"
+    )
 
     __table_args__ = (
         # HNSW index for cosine similarity search on embeddings
@@ -56,8 +64,16 @@ class ArticleModel(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
         # GIN trigram indexes for cold-path full-text search
-        Index("ix_articles_headline_gin", "headline", postgresql_using="gin",
-              postgresql_ops={"headline": "gin_trgm_ops"}),
-        Index("ix_articles_clean_content_gin", "clean_content", postgresql_using="gin",
-              postgresql_ops={"clean_content": "gin_trgm_ops"}),
+        Index(
+            "ix_articles_headline_gin",
+            "headline",
+            postgresql_using="gin",
+            postgresql_ops={"headline": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_articles_clean_content_gin",
+            "clean_content",
+            postgresql_using="gin",
+            postgresql_ops={"clean_content": "gin_trgm_ops"},
+        ),
     )

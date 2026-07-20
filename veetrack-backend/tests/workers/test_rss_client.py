@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import fakeredis.aioredis as fakeredis
@@ -22,6 +22,7 @@ SINCE = datetime(2020, 1, 1, tzinfo=UTC)  # far past — all test entries should
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_entry(
     *,
@@ -43,7 +44,9 @@ def _make_entry(
     return e
 
 
-def _make_parsed(entries: list, *, bozo: bool = False, feed_title: str = "Workers Feed") -> MagicMock:
+def _make_parsed(
+    entries: list, *, bozo: bool = False, feed_title: str = "Workers Feed"
+) -> MagicMock:
     p = MagicMock()
     p.get = lambda key, default=None: (
         entries if key == "entries" else (bozo if key == "bozo" else default)
@@ -56,6 +59,7 @@ def _make_parsed(entries: list, *, bozo: bool = False, feed_title: str = "Worker
 # ---------------------------------------------------------------------------
 # _host_source_id
 # ---------------------------------------------------------------------------
+
 
 def test_host_source_id_extracts_hostname() -> None:
     hid = _host_source_id("src", "https://feeds.news.com/rss")
@@ -71,6 +75,7 @@ def test_host_source_id_different_sources_differ() -> None:
 # ---------------------------------------------------------------------------
 # _parse_entry_date
 # ---------------------------------------------------------------------------
+
 
 def test_parse_entry_date_uses_published() -> None:
     e = MagicMock()
@@ -99,6 +104,7 @@ def test_parse_entry_date_none_returns_now() -> None:
 # ---------------------------------------------------------------------------
 # _entry_to_article
 # ---------------------------------------------------------------------------
+
 
 def test_entry_to_article_maps_fields() -> None:
     entry = _make_entry()
@@ -133,6 +139,7 @@ def test_entry_to_article_image_enclosure() -> None:
 # ---------------------------------------------------------------------------
 # RssClient.fetch
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 async def redis() -> fakeredis.FakeRedis:

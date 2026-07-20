@@ -111,8 +111,5 @@ def _build_html(brief: BriefDocument) -> str:
 
 def _esc(text: str) -> str:
     return (
-        text.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     )

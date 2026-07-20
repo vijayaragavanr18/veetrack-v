@@ -20,7 +20,6 @@ from app.api.v1.admin.dashboard import (
     record_api_error,
 )
 
-
 # ---------------------------------------------------------------------------
 # Error counter unit tests
 # ---------------------------------------------------------------------------
@@ -53,6 +52,7 @@ def test_errors_outside_window_are_excluded() -> None:
     _reset_window()
     # Inject a fake old timestamp directly
     from app.api.v1.admin.dashboard import _ERROR_WINDOW_SECONDS
+
     old_ts = time.monotonic() - _ERROR_WINDOW_SECONDS - 1
     _error_window.append(old_ts)
     assert get_recent_error_count() == 0
@@ -60,11 +60,12 @@ def test_errors_outside_window_are_excluded() -> None:
 
 def test_mixed_old_and_new_errors() -> None:
     from app.api.v1.admin.dashboard import _ERROR_WINDOW_SECONDS
+
     _reset_window()
     old_ts = time.monotonic() - _ERROR_WINDOW_SECONDS - 1
     _error_window.append(old_ts)
-    record_api_error()   # fresh
-    record_api_error()   # fresh
+    record_api_error()  # fresh
+    record_api_error()  # fresh
     assert get_recent_error_count() == 2
 
 
@@ -83,6 +84,7 @@ def reset_error_window():
 def _make_admin_client(role: str) -> tuple[FastAPI, TestClient]:
     """Return a test client with a mocked current user of *role*."""
     import os
+
     os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
     os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
     os.environ.setdefault("JWT_SECRET", "test-secret-that-is-long-enough-for-tests-only")
@@ -177,4 +179,5 @@ class TestObservability:
     def test_sentry_init_no_op_without_dsn(self) -> None:
         """init_sentry with empty DSN must not raise."""
         from app.core.observability import init_sentry
+
         init_sentry(dsn="", environment="test", traces_sample_rate=0.1)

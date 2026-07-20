@@ -52,7 +52,7 @@ async def _run(
 ) -> dict[str, Any]:
     import os
 
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.application.use_cases.watchlists.evaluate_alerts import EvaluateAlerts
     from app.infrastructure.db.repositories.watchlist import SqlAlchemyWatchlistRepository

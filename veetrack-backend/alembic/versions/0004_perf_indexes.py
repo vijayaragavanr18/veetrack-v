@@ -36,6 +36,7 @@ down_revision = "0003"
 branch_labels = None
 depends_on = None
 
+
 def upgrade() -> None:
     # Note: CREATE INDEX CONCURRENTLY requires running outside a transaction
     # (production: use `alembic upgrade head` via a dedicated script that

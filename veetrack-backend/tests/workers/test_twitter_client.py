@@ -16,7 +16,6 @@ from workers.connectors.twitter import (
     _is_retweet,
     _map_tweet,
     _parse_created_at,
-    _tweet_url,
 )
 
 SOURCE_ID = "tw-test"
@@ -40,6 +39,7 @@ def client(limiter: RedisRateLimiter) -> TwitterClient:
 
 # _parse_created_at
 
+
 def test_parse_with_microseconds() -> None:
     dt = _parse_created_at("2024-12-10T09:15:30.000Z")
     assert dt.year == 2024 and dt.tzinfo is not None
@@ -57,6 +57,7 @@ def test_parse_none() -> None:
 
 # _is_retweet
 
+
 def test_is_retweet() -> None:
     assert _is_retweet({"referenced_tweets": [{"type": "retweeted"}]}) is True
 
@@ -70,6 +71,7 @@ def test_no_refs() -> None:
 
 
 # _extract_media_url
+
 
 def test_extract_photo_url() -> None:
     tweet = {
@@ -209,14 +211,12 @@ async def test_fetch_401_raises(client: TwitterClient) -> None:
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_fetch_records_failure(
-    redis: fakeredis.FakeRedis, limiter: RedisRateLimiter
-) -> None:
+async def test_fetch_records_failure(redis: fakeredis.FakeRedis, limiter: RedisRateLimiter) -> None:
     c = TwitterClient(api_key="key", source_id=SOURCE_ID, rate_limiter=limiter)
     respx.get("https://api.twitterapi.io/twitter/tweet/advanced_search").mock(
         return_value=httpx.Response(500)
     )
-    with pytest.raises(Exception):
+    with pytest.raises(httpx.HTTPStatusError):
         await c.fetch("Tesla", SINCE)
 
     val = await redis.get(f"vt:cb:failures:{SOURCE_ID}")

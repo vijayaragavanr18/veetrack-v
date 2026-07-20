@@ -20,8 +20,8 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # Cost coefficients in micro-USD per token (approximate, haiku-tier)
-_INPUT_COST_PER_TOKEN_MICRO = 0.0008   # $0.80/M  = 0.8e-6 per token
-_OUTPUT_COST_PER_TOKEN_MICRO = 0.004   # $4.00/M  = 4.0e-6 per token
+_INPUT_COST_PER_TOKEN_MICRO = 0.0008  # $0.80/M  = 0.8e-6 per token
+_OUTPUT_COST_PER_TOKEN_MICRO = 0.004  # $4.00/M  = 4.0e-6 per token
 
 
 class HostedClient:
@@ -125,9 +125,7 @@ class HostedClient:
                 stripped = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
             return dict(json.loads(stripped))  # type: ignore[arg-type]
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"Hosted LLM returned invalid JSON: {exc}\nRaw: {text[:200]}"
-            ) from exc
+            raise ValueError(f"Hosted LLM returned invalid JSON: {exc}\nRaw: {text[:200]}") from exc
 
     # ------------------------------------------------------------------
     # Internal

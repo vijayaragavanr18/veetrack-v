@@ -91,9 +91,7 @@ class GlinerNerService:
         th = threshold if threshold is not None else self._default_threshold
         if not text.strip() or not labels:
             return []
-        raw: list[dict[str, Any]] = self._model().predict_entities(
-            text, labels, threshold=th
-        )
+        raw: list[dict[str, Any]] = self._model().predict_entities(text, labels, threshold=th)
         return [_to_mention(r) for r in raw]
 
     def extract_batch(

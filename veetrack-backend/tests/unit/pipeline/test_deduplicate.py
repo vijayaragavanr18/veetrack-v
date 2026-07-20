@@ -16,6 +16,7 @@ from app.application.use_cases.pipeline.deduplicate import (
 # compute_minhash
 # ---------------------------------------------------------------------------
 
+
 def test_compute_minhash_returns_object() -> None:
     m = compute_minhash("hello world")
     assert m is not None
@@ -42,6 +43,7 @@ def test_compute_minhash_empty_string_no_crash() -> None:
 # ---------------------------------------------------------------------------
 # build_lsh_index / add_to_index / find_duplicate
 # ---------------------------------------------------------------------------
+
 
 def test_build_lsh_index_returns_empty_index() -> None:
     lsh = build_lsh_index()
@@ -130,6 +132,7 @@ def test_multiple_articles_in_index() -> None:
 # ---------------------------------------------------------------------------
 # is_near_duplicate
 # ---------------------------------------------------------------------------
+
 
 def test_is_near_duplicate_identical() -> None:
     text = "Identical article text that should match itself."

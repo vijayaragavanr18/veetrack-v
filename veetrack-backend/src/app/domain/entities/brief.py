@@ -17,7 +17,7 @@ class BriefStoryItem:
     story_id: str
     title: str
     entity_name: str
-    risk_level: str          # low / medium / high / critical
+    risk_level: str  # low / medium / high / critical
     sentiment_label: str
     article_count: int
     # Page-2 AI insight
@@ -26,7 +26,7 @@ class BriefStoryItem:
     # Page-4 top recommendation (audience=exec, highest confidence)
     top_recommendation: str
     top_rec_confidence: float
-    published_at: str        # ISO-8601 of most-recent article
+    published_at: str  # ISO-8601 of most-recent article
 
 
 @dataclass

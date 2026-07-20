@@ -13,6 +13,7 @@ from app.infrastructure.nlp.gliner_service import GlinerNerService, _to_mention
 # _to_mention helper
 # ---------------------------------------------------------------------------
 
+
 def test_to_mention_full_dict() -> None:
     raw = {"text": "Tesla", "label": "organization", "score": 0.92, "start": 5, "end": 10}
     m = _to_mention(raw)
@@ -39,6 +40,7 @@ def test_to_mention_empty_dict_no_crash() -> None:
 # GlinerNerService satisfies NerService protocol
 # ---------------------------------------------------------------------------
 
+
 def test_gliner_service_satisfies_protocol() -> None:
     assert isinstance(GlinerNerService.__new__(GlinerNerService), NerService)
 
@@ -46,6 +48,7 @@ def test_gliner_service_satisfies_protocol() -> None:
 # ---------------------------------------------------------------------------
 # GlinerNerService.extract — mocked model
 # ---------------------------------------------------------------------------
+
 
 def _make_service_with_mock_model(
     predict_return: list[dict],
@@ -64,10 +67,12 @@ def _make_service_with_mock_model(
 
 
 def test_extract_returns_mentions() -> None:
-    svc = _make_service_with_mock_model([
-        {"text": "Tesla", "label": "organization", "score": 0.91, "start": 0, "end": 5},
-        {"text": "Elon Musk", "label": "person", "score": 0.85, "start": 10, "end": 19},
-    ])
+    svc = _make_service_with_mock_model(
+        [
+            {"text": "Tesla", "label": "organization", "score": 0.91, "start": 0, "end": 5},
+            {"text": "Elon Musk", "label": "person", "score": 0.85, "start": 10, "end": 19},
+        ]
+    )
     mentions = svc.extract("Tesla CEO Elon Musk", ["organization", "person"])
     assert len(mentions) == 2
     assert mentions[0].text == "Tesla"
@@ -87,9 +92,11 @@ def test_extract_empty_labels_returns_empty() -> None:
 
 
 def test_extract_maps_score() -> None:
-    svc = _make_service_with_mock_model([
-        {"text": "Apple", "label": "organization", "score": 0.77},
-    ])
+    svc = _make_service_with_mock_model(
+        [
+            {"text": "Apple", "label": "organization", "score": 0.77},
+        ]
+    )
     mentions = svc.extract("Apple earnings", ["organization"])
     assert mentions[0].score == pytest.approx(0.77)
 
@@ -97,6 +104,7 @@ def test_extract_maps_score() -> None:
 # ---------------------------------------------------------------------------
 # GlinerNerService.extract_batch — mocked model
 # ---------------------------------------------------------------------------
+
 
 def test_extract_batch_returns_per_text_lists() -> None:
     batch_out = [

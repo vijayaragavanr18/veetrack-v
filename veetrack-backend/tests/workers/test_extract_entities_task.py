@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -12,10 +12,10 @@ from workers.tasks.nlp.extract_entities import (
     _trigram_sim,
 )
 
-
 # ---------------------------------------------------------------------------
 # _trigram helpers
 # ---------------------------------------------------------------------------
+
 
 def test_trigram_set_normal() -> None:
     s = _trigram_set("hello")
@@ -50,6 +50,7 @@ def test_trigram_sim_case_insensitive() -> None:
 # ---------------------------------------------------------------------------
 # _resolve_mention — alias lookup mocked via fake session
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_resolve_mention_exact_match() -> None:
@@ -121,6 +122,7 @@ async def test_resolve_mention_creates_new_when_no_match() -> None:
     result = await _resolve_mention(session, "Anthropic", "organization", [])
     # Result should be a valid UUID string
     import uuid
+
     parsed = uuid.UUID(result)
     assert str(parsed) == result
 
@@ -128,6 +130,7 @@ async def test_resolve_mention_creates_new_when_no_match() -> None:
 # ---------------------------------------------------------------------------
 # GLiNER label deduplication
 # ---------------------------------------------------------------------------
+
 
 def test_dedup_keeps_highest_score() -> None:
     """Same surface form → keep mention with highest score."""

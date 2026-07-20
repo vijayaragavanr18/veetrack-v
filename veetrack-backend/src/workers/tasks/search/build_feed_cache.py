@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 _FEED_KEY_PREFIX = "vt:feed:"
 _TRACKED_KEY_PREFIX = "vt:tracked:"
-_CACHE_TTL = 300   # 5 minutes — always explicitly refreshed on story update
+_CACHE_TTL = 300  # 5 minutes — always explicitly refreshed on story update
 _STORY_LIMIT = 50  # max stories per entity in cached payload
 _ARTICLE_PREVIEW = 5  # articles per story for Page-1
 
@@ -105,13 +105,15 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
             for ar in art_rows:
                 sid = str(ar.story_id)
                 if len(articles_by_story.get(sid, [])) < _ARTICLE_PREVIEW:
-                    articles_by_story.setdefault(sid, []).append({
-                        "id": str(ar.id),
-                        "headline": ar.headline or "",
-                        "publisher": ar.publisher or "",
-                        "published_at": ar.published_at.isoformat() if ar.published_at else "",
-                        "sentiment_label": ar.sentiment_label or "neutral",
-                    })
+                    articles_by_story.setdefault(sid, []).append(
+                        {
+                            "id": str(ar.id),
+                            "headline": ar.headline or "",
+                            "publisher": ar.publisher or "",
+                            "published_at": ar.published_at.isoformat() if ar.published_at else "",
+                            "sentiment_label": ar.sentiment_label or "neutral",
+                        }
+                    )
 
             # 4. Insights (Page 2)
             if story_ids:
@@ -138,10 +140,7 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
 
             # 5. Cluster member IDs (Page 3)
             cluster_rows = await session.execute(
-                text(
-                    "SELECT story_id, article_id FROM story_articles "
-                    "WHERE story_id = ANY(:sids)"
-                ),
+                text("SELECT story_id, article_id FROM story_articles WHERE story_id = ANY(:sids)"),
                 {"sids": story_ids},
             )
             cluster_by_story: dict[str, list[str]] = {}
@@ -162,34 +161,38 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
             recs_by_story: dict[str, list[dict[str, Any]]] = {}
             for rr in rec_rows:
                 sid = str(rr.story_id)
-                recs_by_story.setdefault(sid, []).append({
-                    "id": str(rr.id),
-                    "audience": rr.audience or "",
-                    "recommendation_text": rr.recommendation_text or "",
-                    "risk_level": rr.risk_level or "low",
-                    "confidence_score": float(rr.confidence_score or 0),
-                    "needs_human_review": bool(rr.needs_human_review),
-                })
+                recs_by_story.setdefault(sid, []).append(
+                    {
+                        "id": str(rr.id),
+                        "audience": rr.audience or "",
+                        "recommendation_text": rr.recommendation_text or "",
+                        "risk_level": rr.risk_level or "low",
+                        "confidence_score": float(rr.confidence_score or 0),
+                        "needs_human_review": bool(rr.needs_human_review),
+                    }
+                )
 
         # 7. Assemble payloads
         payloads = []
         for s in stories:
             sid = str(s.id)
             insight_d = insights.get(sid)
-            payloads.append({
-                "id": sid,
-                "title": s.title or "",
-                "status": s.status or "active",
-                "risk_level": s.risk_level or "low",
-                "primary_entity_id": entity_id,
-                "entity_name": entity_name,
-                "article_count": int(s.article_count or 0),
-                "articles": articles_by_story.get(sid, []),
-                "insight": insight_d,
-                "cluster_member_ids": cluster_by_story.get(sid, []),
-                "recommendations": recs_by_story.get(sid, []),
-                "updated_at": s.updated_at.isoformat() if s.updated_at else "",
-            })
+            payloads.append(
+                {
+                    "id": sid,
+                    "title": s.title or "",
+                    "status": s.status or "active",
+                    "risk_level": s.risk_level or "low",
+                    "primary_entity_id": entity_id,
+                    "entity_name": entity_name,
+                    "article_count": int(s.article_count or 0),
+                    "articles": articles_by_story.get(sid, []),
+                    "insight": insight_d,
+                    "cluster_member_ids": cluster_by_story.get(sid, []),
+                    "recommendations": recs_by_story.get(sid, []),
+                    "updated_at": s.updated_at.isoformat() if s.updated_at else "",
+                }
+            )
 
         # 8. Write to Redis
         feed_key = f"{_FEED_KEY_PREFIX}{entity_id}"

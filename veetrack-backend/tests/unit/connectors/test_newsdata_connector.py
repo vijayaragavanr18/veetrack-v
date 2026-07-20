@@ -43,6 +43,7 @@ def connector(limiter: RedisRateLimiter) -> NewsDataConnector:
 # _parse_published_at
 # ---------------------------------------------------------------------------
 
+
 def test_parse_published_at_valid() -> None:
     dt = _parse_published_at("2024-12-10 09:15:30")
     assert dt.year == 2024
@@ -63,6 +64,7 @@ def test_parse_published_at_bad_format_returns_now() -> None:
 # ---------------------------------------------------------------------------
 # _map_article
 # ---------------------------------------------------------------------------
+
 
 def test_map_article_full_response() -> None:
     item = {
@@ -158,8 +160,8 @@ async def test_fetch_skips_invalid_items(connector: NewsDataConnector) -> None:
         "status": "success",
         "results": [
             {"article_id": "ok", "link": "https://example.com", "title": "Valid"},
-            {"article_id": "no-url", "title": "Missing URL"},   # invalid
-            {"link": "https://example.com"},                     # no title
+            {"article_id": "no-url", "title": "Missing URL"},  # invalid
+            {"link": "https://example.com"},  # no title
         ],
     }
     respx.get("https://newsdata.io/api/1/news/search").mock(
@@ -174,9 +176,7 @@ async def test_fetch_skips_invalid_items(connector: NewsDataConnector) -> None:
 async def test_fetch_401_raises_service_unavailable(connector: NewsDataConnector) -> None:
     from app.domain.exceptions import ServiceUnavailableError
 
-    respx.get("https://newsdata.io/api/1/news/search").mock(
-        return_value=httpx.Response(401)
-    )
+    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(401))
     with pytest.raises(ServiceUnavailableError, match="invalid API key"):
         await connector.fetch("test", SINCE)
 
@@ -186,9 +186,7 @@ async def test_fetch_401_raises_service_unavailable(connector: NewsDataConnector
 async def test_fetch_429_raises_service_unavailable(connector: NewsDataConnector) -> None:
     from app.domain.exceptions import ServiceUnavailableError
 
-    respx.get("https://newsdata.io/api/1/news/search").mock(
-        return_value=httpx.Response(429)
-    )
+    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(429))
     with pytest.raises(ServiceUnavailableError, match="quota exhausted"):
         await connector.fetch("test", SINCE)
 
@@ -216,9 +214,7 @@ async def test_fetch_increments_failure_counter_on_error(
         source_id=SOURCE_ID,
         rate_limiter=limiter,
     )
-    respx.get("https://newsdata.io/api/1/news/search").mock(
-        return_value=httpx.Response(500)
-    )
+    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(500))
     from app.domain.exceptions import ServiceUnavailableError
 
     with pytest.raises(ServiceUnavailableError):

@@ -30,5 +30,7 @@ class AlertModel(Base):
     channel: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
 
-    watchlist: Mapped[WatchlistModel] = relationship("WatchlistModel", back_populates="alerts", lazy="raise")
+    watchlist: Mapped[WatchlistModel] = relationship(
+        "WatchlistModel", back_populates="alerts", lazy="raise"
+    )
     story: Mapped[StoryModel] = relationship("StoryModel", back_populates="alerts", lazy="raise")

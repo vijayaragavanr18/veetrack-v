@@ -30,6 +30,7 @@ import numpy as np
 # Result types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MergeOp:
     """Merge *source_story_id* into *target_story_id* (keep the older one)."""
@@ -66,6 +67,7 @@ class ReconcileResult:
 # Pure HDBSCAN runner
 # ---------------------------------------------------------------------------
 
+
 def run_hdbscan(
     embeddings: np.ndarray,
     min_cluster_size: int = 3,
@@ -97,6 +99,7 @@ def run_hdbscan(
 # ---------------------------------------------------------------------------
 # Reconcile use case
 # ---------------------------------------------------------------------------
+
 
 class ReconcileClusters:
     """Pure reconciliation logic — no DB access.
@@ -191,9 +194,7 @@ class ReconcileClusters:
                 # Absorb any unassigned members into the existing story
                 if unassigned:
                     # Treat as a soft-merge (assign unassigned to existing story)
-                    result.new_stories.append(
-                        NewStoryOp(article_ids=unassigned)
-                    )
+                    result.new_stories.append(NewStoryOp(article_ids=unassigned))
 
             else:
                 # Multiple existing stories all fall into the same HDBSCAN cluster → MERGE
@@ -230,15 +231,14 @@ class ReconcileClusters:
             if len(unique_labels) > 1:
                 # Story appears in multiple distinct clusters → split
                 # Keep the cluster with the most members; split off the rest
-                cluster_sizes = {
-                    lb: len(cluster_to_articles.get(lb, [])) for lb in unique_labels
-                }
+                cluster_sizes = {lb: len(cluster_to_articles.get(lb, [])) for lb in unique_labels}
                 keep_label = max(cluster_sizes, key=lambda lb: cluster_sizes[lb])
                 for split_label in unique_labels:
                     if split_label == keep_label:
                         continue
                     split_articles = [
-                        aid for aid in cluster_to_articles.get(split_label, [])
+                        aid
+                        for aid in cluster_to_articles.get(split_label, [])
                         if article_to_story.get(aid, "") == story_id
                     ]
                     if split_articles:

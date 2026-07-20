@@ -29,8 +29,8 @@ class StoryRecommendationModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    story: Mapped[StoryModel] = relationship("StoryModel", back_populates="recommendations", lazy="raise")
-
-    __table_args__ = (
-        Index("ix_story_recs_story_confidence", "story_id", "confidence_score"),
+    story: Mapped[StoryModel] = relationship(
+        "StoryModel", back_populates="recommendations", lazy="raise"
     )
+
+    __table_args__ = (Index("ix_story_recs_story_confidence", "story_id", "confidence_score"),)

@@ -16,6 +16,7 @@ from app.infrastructure.nlp.sentiment_service import (
 # _parse_result helper
 # ---------------------------------------------------------------------------
 
+
 def test_parse_positive() -> None:
     r = _parse_result({"label": "positive", "score": 0.92}, False)
     assert r.label == "positive"
@@ -52,13 +53,17 @@ def test_parse_low_confidence_flag_propagated() -> None:
 # ModernBertSentimentService protocol conformance
 # ---------------------------------------------------------------------------
 
+
 def test_sentiment_service_satisfies_protocol() -> None:
-    assert isinstance(ModernBertSentimentService.__new__(ModernBertSentimentService), SentimentService)
+    assert isinstance(
+        ModernBertSentimentService.__new__(ModernBertSentimentService), SentimentService
+    )
 
 
 # ---------------------------------------------------------------------------
 # Helper to build a service with a mocked pipeline
 # ---------------------------------------------------------------------------
+
 
 def _make_service(return_value: list[dict]) -> ModernBertSentimentService:
     mock_pipe = MagicMock(return_value=return_value)
@@ -71,6 +76,7 @@ def _make_service(return_value: list[dict]) -> ModernBertSentimentService:
 # ---------------------------------------------------------------------------
 # analyze — single text
 # ---------------------------------------------------------------------------
+
 
 def test_analyze_positive_text() -> None:
     svc = _make_service([{"label": "positive", "score": 0.95}])
@@ -116,19 +122,24 @@ def test_analyze_short_text_flags_low_confidence() -> None:
 # analyze_batch
 # ---------------------------------------------------------------------------
 
+
 def test_analyze_batch_returns_per_text_results() -> None:
-    mock_pipe = MagicMock(return_value=[
-        {"label": "positive", "score": 0.9},
-        {"label": "negative", "score": 0.8},
-    ])
+    mock_pipe = MagicMock(
+        return_value=[
+            {"label": "positive", "score": 0.9},
+            {"label": "negative", "score": 0.8},
+        ]
+    )
     svc = ModernBertSentimentService.__new__(ModernBertSentimentService)
     svc._model_id = "test-model"
     svc._pipe = lambda: mock_pipe  # type: ignore[method-assign]
 
-    results = svc.analyze_batch([
-        "Great results this quarter!",
-        "The layoffs were devastating for morale.",
-    ])
+    results = svc.analyze_batch(
+        [
+            "Great results this quarter!",
+            "The layoffs were devastating for morale.",
+        ]
+    )
     assert len(results) == 2
     assert results[0].label == "positive"
     assert results[1].label == "negative"

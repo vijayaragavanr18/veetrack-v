@@ -71,9 +71,7 @@ class VllmClient:
         try:
             return str(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError) as exc:
-            raise ServiceUnavailableError(
-                f"vLLM response missing expected fields: {exc}"
-            ) from exc
+            raise ServiceUnavailableError(f"vLLM response missing expected fields: {exc}") from exc
 
     async def complete_json(
         self,

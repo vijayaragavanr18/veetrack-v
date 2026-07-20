@@ -11,6 +11,7 @@ REQUIRED_DIM = 1024
 
 def _unit_vec(dim: int = REQUIRED_DIM) -> list[float]:
     import math
+
     v = 1.0 / math.sqrt(dim)
     return [v] * dim
 
@@ -28,6 +29,7 @@ def _stub_service(vec: list[float] | None = None) -> MagicMock:
 # ---------------------------------------------------------------------------
 # run (single article)
 # ---------------------------------------------------------------------------
+
 
 def test_run_returns_correct_dimension() -> None:
     uc = EmbedArticle(_stub_service())
@@ -69,6 +71,7 @@ def test_run_service_exception_returns_zero_vector_skipped() -> None:
 # ---------------------------------------------------------------------------
 # run_batch
 # ---------------------------------------------------------------------------
+
 
 def test_run_batch_empty_list() -> None:
     uc = EmbedArticle(_stub_service())

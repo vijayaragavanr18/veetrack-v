@@ -11,7 +11,8 @@ import * as adminApi from "@/features/admin/api/adminApi";
 jest.mock("@/features/admin/api/adminApi");
 // recharts uses browser APIs not available in JSDOM; mock ResponsiveContainer
 jest.mock("recharts", () => {
-  const React = require("react");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require("react") as typeof import("react");
   return {
     BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
     Bar: () => null,

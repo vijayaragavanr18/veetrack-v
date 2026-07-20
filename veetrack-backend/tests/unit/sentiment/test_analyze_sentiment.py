@@ -23,6 +23,7 @@ def _stub_service(label: str = "positive", score: float = 0.9) -> MagicMock:
 # run (single article)
 # ---------------------------------------------------------------------------
 
+
 def test_run_positive_content() -> None:
     uc = AnalyzeSentiment(_stub_service("positive", 0.91))
     result = uc.run("Tremendous earnings beat expectations across all segments.")
@@ -58,6 +59,7 @@ def test_run_service_exception_returns_neutral_low_confidence() -> None:
 # ---------------------------------------------------------------------------
 # run_batch
 # ---------------------------------------------------------------------------
+
 
 def test_run_batch_returns_correct_count() -> None:
     svc = MagicMock()

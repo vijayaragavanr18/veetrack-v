@@ -55,8 +55,12 @@ def test_build_prompt_mentions_confidence() -> None:
 
 def test_system_prompt_mentions_confidence_self_assessment() -> None:
     ctx = RecommendationPromptContext(
-        title="T", what_happened="x", why_happened="y",
-        article_count=3, recent_headlines=[], entity_names=[],
+        title="T",
+        what_happened="x",
+        why_happened="y",
+        article_count=3,
+        recent_headlines=[],
+        entity_names=[],
     )
     sys, _ = build_prompt(ctx)
     assert "self-assessment" in sys.lower() or "confidence" in sys.lower()
@@ -85,8 +89,12 @@ def test_response_schema_requires_confidence_score() -> None:
 
 def test_no_entity_names_uses_fallback() -> None:
     ctx = RecommendationPromptContext(
-        title="T", what_happened="x", why_happened="y",
-        article_count=3, recent_headlines=[], entity_names=[],
+        title="T",
+        what_happened="x",
+        why_happened="y",
+        article_count=3,
+        recent_headlines=[],
+        entity_names=[],
     )
     _, user = build_prompt(ctx)
     assert "none identified" in user
@@ -94,7 +102,9 @@ def test_no_entity_names_uses_fallback() -> None:
 
 def test_headlines_capped_at_eight() -> None:
     ctx = RecommendationPromptContext(
-        title="T", what_happened="x", why_happened="y",
+        title="T",
+        what_happened="x",
+        why_happened="y",
         article_count=20,
         recent_headlines=[f"Headline {i}" for i in range(20)],
         entity_names=[],

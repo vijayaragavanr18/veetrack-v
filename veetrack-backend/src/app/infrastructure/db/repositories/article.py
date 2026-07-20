@@ -81,7 +81,9 @@ class SqlAlchemyArticleRepository:
             try:
                 await self._session.flush()
             except IntegrityError as exc:
-                raise ConflictError(f"Article with dedup_hash {article.dedup_hash!r} already exists") from exc
+                raise ConflictError(
+                    f"Article with dedup_hash {article.dedup_hash!r} already exists"
+                ) from exc
         else:
             existing.headline = article.headline
             existing.clean_content = article.clean_content

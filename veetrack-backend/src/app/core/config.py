@@ -40,8 +40,8 @@ class Settings(BaseSettings):
 
     # Observability (optional — left empty disables)
     sentry_dsn: str = ""
-    sentry_traces_sample_rate: float = 0.1   # 10% of transactions sampled
-    prometheus_enabled: bool = True           # expose /metrics endpoint
+    sentry_traces_sample_rate: float = 0.1  # 10% of transactions sampled
+    prometheus_enabled: bool = True  # expose /metrics endpoint
 
     @field_validator("jwt_secret")
     @classmethod

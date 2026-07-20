@@ -12,10 +12,10 @@ import pytest
 
 from workers.tasks.nlp.embed_article import REQUIRED_DIM, _embed_text
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+
 
 def test_required_dim_is_1024() -> None:
     assert REQUIRED_DIM == 1024
@@ -25,13 +25,14 @@ def test_required_dim_is_1024() -> None:
 # _embed_text helper
 # ---------------------------------------------------------------------------
 
-def _unit_vec(dim: int = REQUIRED_DIM) -> "np.ndarray":
+
+def _unit_vec(dim: int = REQUIRED_DIM) -> np.ndarray:
     v = np.ones(dim, dtype=np.float32)
     v /= np.linalg.norm(v)
     return v
 
 
-def _make_model(vec: "np.ndarray | None" = None) -> Any:
+def _make_model(vec: np.ndarray | None = None) -> Any:
     if vec is None:
         vec = _unit_vec()
     m = MagicMock()
@@ -77,9 +78,11 @@ def test_embed_text_vector_is_l2_normalised() -> None:
 # Dimension mismatch raises ValueError
 # ---------------------------------------------------------------------------
 
+
 def test_dimension_mismatch_raises() -> None:
-    import numpy as np
     from unittest.mock import patch
+
+    import numpy as np
 
     wrong_dim = 768
     mock_model = MagicMock()
@@ -90,22 +93,24 @@ def test_dimension_mismatch_raises() -> None:
         patch("workers.tasks.nlp.embed_article._embedding_model_id", ""),
         patch("torch.cuda.is_available", return_value=False),
         patch("sentence_transformers.SentenceTransformer", return_value=mock_model),
+        pytest.raises(ValueError, match="1024"),
     ):
-        with pytest.raises(ValueError, match="1024"):
-            from workers.tasks.nlp.embed_article import _get_model
-            _get_model("some-768d-model")
+        from workers.tasks.nlp.embed_article import _get_model
+
+        _get_model("some-768d-model")
 
 
 # ---------------------------------------------------------------------------
 # Batch throughput benchmark
 # ---------------------------------------------------------------------------
 
+
 def test_batch_faster_than_one_at_a_time() -> None:
     """Batch encode(list) must be faster than N individual encode() calls."""
     DELAY_PER_CALL_S = 0.010
     texts = [f"Article {i}: substantive news content about market events." for i in range(20)]
 
-    def _slow_encode(inputs: Any, normalize_embeddings: bool = False) -> "np.ndarray":
+    def _slow_encode(inputs: Any, normalize_embeddings: bool = False) -> np.ndarray:
         if isinstance(inputs, list):
             time.sleep(DELAY_PER_CALL_S)
             return np.array([_unit_vec() for _ in inputs])
@@ -127,11 +132,11 @@ def test_batch_faster_than_one_at_a_time() -> None:
     batch_s = time.perf_counter() - t0
 
     print(
-        f"\n[benchmark] one-at-a-time: {one_at_a_time_s*1000:.1f} ms | "
-        f"batch: {batch_s*1000:.1f} ms | "
+        f"\n[benchmark] one-at-a-time: {one_at_a_time_s * 1000:.1f} ms | "
+        f"batch: {batch_s * 1000:.1f} ms | "
         f"speedup: {one_at_a_time_s / batch_s:.1f}×"
     )
     assert batch_s < one_at_a_time_s, (
-        f"Batch ({batch_s*1000:.1f} ms) should be faster than "
-        f"one-at-a-time ({one_at_a_time_s*1000:.1f} ms)"
+        f"Batch ({batch_s * 1000:.1f} ms) should be faster than "
+        f"one-at-a-time ({one_at_a_time_s * 1000:.1f} ms)"
     )

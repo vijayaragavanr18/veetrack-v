@@ -176,7 +176,7 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
     progress.set(p);
   }, [computeProgress, progress]);
 
-  const onPointerUp = useCallback((_e: React.PointerEvent) => {
+  const onPointerUp = useCallback(() => {
     if (!dragging.current) return;
     dragging.current = false;
     if (axis.current) {

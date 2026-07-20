@@ -23,6 +23,7 @@ SINCE = datetime(2020, 1, 1, tzinfo=UTC)  # far past — all test entries should
 # Minimal feedparser-style entry mock helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_entry(
     *,
     title: str = "Test Title",
@@ -59,6 +60,7 @@ def _make_parsed(entries: list, *, bozo: bool = False, feed_title: str = "My Fee
 # _host_source_id
 # ---------------------------------------------------------------------------
 
+
 def test_host_source_id_uses_hostname() -> None:
     hid = _host_source_id("src1", "https://feeds.example.com/rss")
     assert "src1" in hid
@@ -80,6 +82,7 @@ def test_host_source_id_same_host_same() -> None:
 # ---------------------------------------------------------------------------
 # _parse_entry_date
 # ---------------------------------------------------------------------------
+
 
 def test_parse_entry_date_published() -> None:
     entry = MagicMock()
@@ -108,6 +111,7 @@ def test_parse_entry_date_no_date_returns_now() -> None:
 # ---------------------------------------------------------------------------
 # _entry_to_article
 # ---------------------------------------------------------------------------
+
 
 def test_entry_to_article_full() -> None:
     entry = _make_entry()
@@ -222,6 +226,7 @@ async def test_fetch_multiple_feeds(redis: fakeredis.FakeRedis) -> None:
     entry_b = _make_entry(title="B", link="https://feed-b.com/1", entry_id="b1")
 
     call_count = 0
+
     def _fake_parse(url: str) -> MagicMock:
         nonlocal call_count
         call_count += 1

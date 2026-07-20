@@ -31,5 +31,9 @@ class AuditLogModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
     )
 
-    workspace: Mapped[WorkspaceModel] = relationship("WorkspaceModel", back_populates="audit_logs", lazy="raise")
-    user: Mapped[UserModel | None] = relationship("UserModel", back_populates="audit_logs", lazy="raise")
+    workspace: Mapped[WorkspaceModel] = relationship(
+        "WorkspaceModel", back_populates="audit_logs", lazy="raise"
+    )
+    user: Mapped[UserModel | None] = relationship(
+        "UserModel", back_populates="audit_logs", lazy="raise"
+    )

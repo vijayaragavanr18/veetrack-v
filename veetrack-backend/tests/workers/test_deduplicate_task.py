@@ -11,6 +11,7 @@ from workers.tasks.nlp.deduplicate import _build_minhash
 # _build_minhash helper
 # ---------------------------------------------------------------------------
 
+
 def test_build_minhash_returns_minhash() -> None:
     m = _build_minhash("hello world")
     assert isinstance(m, MinHash)
@@ -53,6 +54,7 @@ def test_build_minhash_short_text_no_crash() -> None:
 # ---------------------------------------------------------------------------
 # Integration: build index + query (simulates the task's dedup logic)
 # ---------------------------------------------------------------------------
+
 
 def test_dedup_flags_near_duplicate() -> None:
     lsh: MinHashLSH = MinHashLSH(threshold=0.5, num_perm=128)

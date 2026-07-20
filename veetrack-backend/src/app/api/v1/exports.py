@@ -33,9 +33,7 @@ router = APIRouter(tags=["exports"])
 ExportFormat = Literal["pdf", "pptx"]
 
 _PDF_MIME = "application/pdf"
-_PPTX_MIME = (
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-)
+_PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 
 @router.post("/exports/brief")
@@ -52,6 +50,7 @@ async def export_brief(
     Sync for ≤50 stories. If response latency becomes an issue for large
     workspaces, wrap in a background job and return 202 + polling URL.
     """
+
     async def _db_query(sql: str, params: dict) -> list[dict]:
         result = await session.execute(text(sql), params)
         columns = result.keys()

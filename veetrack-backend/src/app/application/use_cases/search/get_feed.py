@@ -40,7 +40,7 @@ logger = structlog.get_logger(__name__)
 
 _PAGE_SIZE = 20
 _COLD_PATH_ARTICLE_LIMIT = 50  # max articles to pull for cold query
-_COLD_PATH_STORY_LIMIT = 10    # cap stories surfaced in cold path
+_COLD_PATH_STORY_LIMIT = 10  # cap stories surfaced in cold path
 
 
 class GetFeed:
@@ -297,9 +297,7 @@ class GetFeed:
                         id=str(ar["id"]),
                         headline=str(ar["headline"] or ""),
                         publisher=str(ar["publisher"] or ""),
-                        published_at=ar["published_at"].isoformat()
-                        if ar["published_at"]
-                        else "",
+                        published_at=ar["published_at"].isoformat() if ar["published_at"] else "",
                         sentiment_label=str(ar["sentiment_label"] or "neutral"),
                     )
                 )
@@ -326,6 +324,7 @@ class GetFeed:
 # ------------------------------------------------------------------
 # Serialisation helpers
 # ------------------------------------------------------------------
+
 
 def _sanitise(text: str) -> str:
     """Strip characters unsafe for use in trigram / tsquery."""

@@ -44,6 +44,7 @@ def tracked_key(entity_id: str) -> str:
 
 # Payload shapes ----------------------------------------------------------
 
+
 @dataclass
 class ArticleSummaryItem:
     id: str

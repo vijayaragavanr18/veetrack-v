@@ -56,8 +56,7 @@ def build_prompt(
 ) -> tuple[str, str]:
     """Return (system_prompt, user_prompt) for the executive summary request."""
     summaries = "\n".join(
-        f"- [{a.published_at}] {a.headline}: {a.content_snippet[:300]}"
-        for a in articles
+        f"- [{a.published_at}] {a.headline}: {a.content_snippet[:300]}" for a in articles
     )
     entities_str = ", ".join(entity_names) if entity_names else "none identified"
     user = _USER_TEMPLATE.format(

@@ -26,5 +26,9 @@ class StoryArticleModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    story: Mapped[StoryModel] = relationship("StoryModel", back_populates="story_articles", lazy="raise")
-    article: Mapped[ArticleModel] = relationship("ArticleModel", back_populates="story_articles", lazy="raise")
+    story: Mapped[StoryModel] = relationship(
+        "StoryModel", back_populates="story_articles", lazy="raise"
+    )
+    article: Mapped[ArticleModel] = relationship(
+        "ArticleModel", back_populates="story_articles", lazy="raise"
+    )

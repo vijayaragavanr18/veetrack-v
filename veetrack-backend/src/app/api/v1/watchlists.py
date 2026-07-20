@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import weakref
 from typing import Annotated, Any
 
 import structlog
@@ -90,7 +89,7 @@ class WatchlistResponse(BaseModel):
     alert_channels: dict[str, Any]
 
     @classmethod
-    def from_domain(cls, w: Watchlist) -> "WatchlistResponse":
+    def from_domain(cls, w: Watchlist) -> WatchlistResponse:
         return cls(
             id=w.id,
             workspace_id=w.workspace_id,
@@ -172,7 +171,7 @@ async def alerts_websocket(
 
     try:
         raw = await asyncio.wait_for(ws.receive_text(), timeout=10.0)
-    except (asyncio.TimeoutError, WebSocketDisconnect):
+    except (TimeoutError, WebSocketDisconnect):
         await ws.close(code=1008)
         return
 
@@ -192,7 +191,7 @@ async def alerts_websocket(
         await ws.send_text(json.dumps({"type": "connected", "workspace_id": workspace_id}))
         while True:
             await asyncio.wait_for(ws.receive_text(), timeout=30.0)
-    except (WebSocketDisconnect, asyncio.TimeoutError):
+    except (TimeoutError, WebSocketDisconnect):
         pass
     finally:
         unregister_connection(workspace_id, ws)

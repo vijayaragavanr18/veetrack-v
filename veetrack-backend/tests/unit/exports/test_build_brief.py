@@ -7,8 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.application.use_cases.exports.build_brief import BuildBrief, BuildBriefInput
-from app.domain.entities.brief import BriefDocument, BriefStoryItem
-
+from app.domain.entities.brief import BriefDocument
 
 # ---------------------------------------------------------------------------
 # Fake DB query helper
@@ -49,6 +48,7 @@ def _make_row(
 def make_db_query(rows: list[dict]):
     async def _query(sql: str, params: dict) -> list[dict]:
         return rows
+
     return _query
 
 
@@ -82,7 +82,9 @@ async def test_build_brief_ranks_critical_above_low() -> None:
     now = datetime.now(UTC)
     rows = [
         _make_row("s-low", "Low story", risk_level="low", updated_at=now),
-        _make_row("s-crit", "Critical story", risk_level="critical", updated_at=now - timedelta(hours=1)),
+        _make_row(
+            "s-crit", "Critical story", risk_level="critical", updated_at=now - timedelta(hours=1)
+        ),
     ]
     uc = BuildBrief(db_query=make_db_query(rows))
     doc = await uc.execute(BuildBriefInput("ws1", "Tesla"))

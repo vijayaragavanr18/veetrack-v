@@ -46,6 +46,7 @@ def connector(limiter: RedisRateLimiter) -> TwitterConnector:
 # _parse_created_at
 # ---------------------------------------------------------------------------
 
+
 def test_parse_with_microseconds() -> None:
     dt = _parse_created_at("2024-12-10T09:15:30.000Z")
     assert dt.year == 2024 and dt.tzinfo is not None
@@ -70,6 +71,7 @@ def test_parse_bad_format_returns_now() -> None:
 # _is_retweet
 # ---------------------------------------------------------------------------
 
+
 def test_is_retweet_true() -> None:
     tweet = {"referenced_tweets": [{"type": "retweeted", "id": "123"}]}
     assert _is_retweet(tweet) is True
@@ -88,6 +90,7 @@ def test_is_retweet_false_no_refs() -> None:
 # _extract_media_url
 # ---------------------------------------------------------------------------
 
+
 def test_extract_media_url_photo() -> None:
     tweet = {
         "attachments": {"media_keys": ["key1"]},
@@ -102,9 +105,7 @@ def test_extract_media_url_preview_image() -> None:
     tweet = {
         "attachments": {"media_keys": ["key1"]},
         "_includes": {
-            "media": [
-                {"media_key": "key1", "preview_image_url": "https://pbs.twimg.com/thumb.jpg"}
-            ]
+            "media": [{"media_key": "key1", "preview_image_url": "https://pbs.twimg.com/thumb.jpg"}]
         },
     }
     assert _extract_media_url(tweet) == "https://pbs.twimg.com/thumb.jpg"
@@ -125,6 +126,7 @@ def test_extract_media_url_missing_key() -> None:
 # ---------------------------------------------------------------------------
 # _tweet_url
 # ---------------------------------------------------------------------------
+
 
 def test_tweet_url_with_author() -> None:
     tweet = {"id": "456", "author": {"userName": "elonmusk"}}

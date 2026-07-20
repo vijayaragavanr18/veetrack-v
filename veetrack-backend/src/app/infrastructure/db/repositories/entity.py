@@ -94,9 +94,7 @@ class SqlAlchemyEntityRepository:
         """Return entities whose canonical_name trigram-matches *query*."""
         stmt = (
             select(EntityModel)
-            .where(
-                func.similarity(EntityModel.canonical_name, query) > 0.1
-            )
+            .where(func.similarity(EntityModel.canonical_name, query) > 0.1)
             .order_by(func.similarity(EntityModel.canonical_name, query).desc())
             .limit(limit)
         )

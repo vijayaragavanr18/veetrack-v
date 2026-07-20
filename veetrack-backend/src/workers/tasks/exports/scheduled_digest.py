@@ -64,7 +64,7 @@ async def _run(
     import os
 
     from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.application.use_cases.exports.build_brief import BuildBrief, BuildBriefInput
 
@@ -73,6 +73,7 @@ async def _run(
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with session_factory() as session:
+
         async def _db_query(sql: str, params: dict) -> list[dict]:
             result = await session.execute(text(sql), params)
             cols = result.keys()
@@ -99,11 +100,13 @@ async def _run(
     # Render
     if format == "pptx":
         from app.infrastructure.exports.pptx_renderer import render_pptx
+
         payload = render_pptx(brief)
         filename = f"veetrack_brief_{entity_keyword[:20]}.pptx"
         mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     else:
         from app.infrastructure.exports.pdf_renderer import render_pdf
+
         payload = render_pdf(brief)
         filename = f"veetrack_brief_{entity_keyword[:20]}.pdf"
         mime = "application/pdf"
@@ -132,7 +135,7 @@ async def _run(
 def _send_digest_emails(
     recipients: list[str],
     subject: str,
-    brief: "Any",
+    brief: Any,
     attachment_bytes: bytes,
     attachment_filename: str,
     attachment_mime: str,
@@ -145,10 +148,10 @@ def _send_digest_emails(
     """
     import os
     import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.base import MIMEBase
-    from email.mime.text import MIMEText
     from email import encoders
+    from email.mime.base import MIMEBase
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
     smtp_host = os.environ.get("SMTP_HOST")
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
@@ -159,11 +162,17 @@ def _send_digest_emails(
     if not (smtp_host and smtp_user and smtp_password):
         logger.warning(
             "scheduled_digest.smtp_not_configured",
-            extra={"missing": [k for k, v in {
-                "SMTP_HOST": smtp_host,
-                "SMTP_USER": smtp_user,
-                "SMTP_PASSWORD": smtp_password,
-            }.items() if not v]},
+            extra={
+                "missing": [
+                    k
+                    for k, v in {
+                        "SMTP_HOST": smtp_host,
+                        "SMTP_USER": smtp_user,
+                        "SMTP_PASSWORD": smtp_password,
+                    }.items()
+                    if not v
+                ]
+            },
         )
         return 0
 
@@ -203,7 +212,7 @@ def _send_digest_emails(
     return sent
 
 
-def _build_email_body(brief: "Any") -> str:
+def _build_email_body(brief: Any) -> str:
     lines = [
         f"VeeTrack Executive Digest — {brief.entity_keyword}",
         f"Period: last {brief.window_days} days  ·  {len(brief.stories)} stories",
@@ -212,6 +221,10 @@ def _build_email_body(brief: "Any") -> str:
     for i, s in enumerate(brief.stories, 1):
         lines.append(f"{i}. [{s.risk_level.upper()}] {s.title}")
         if s.what_happened:
-            lines.append(f"   {s.what_happened[:200]}…" if len(s.what_happened) > 200 else f"   {s.what_happened}")
+            lines.append(
+                f"   {s.what_happened[:200]}…"
+                if len(s.what_happened) > 200
+                else f"   {s.what_happened}"
+            )
     lines += ["", "See attached for full brief.", "", "— VeeTrack (advisory only)"]
     return "\n".join(lines)

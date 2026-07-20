@@ -52,6 +52,7 @@ def _headlines(n: int = 5) -> list[str]:
 # Happy path — above threshold
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_returns_three_audience_results() -> None:
     gw = _mock_gateway()
@@ -76,6 +77,7 @@ async def test_above_threshold_not_flagged_for_review() -> None:
 # ---------------------------------------------------------------------------
 # Confidence gating — below threshold → needs_human_review
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_below_threshold_flagged_for_review() -> None:
@@ -126,6 +128,7 @@ async def test_zero_confidence_always_flagged() -> None:
 # Too few articles → skip
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_skips_when_too_few_articles() -> None:
     gw = _mock_gateway()
@@ -146,6 +149,7 @@ async def test_skips_empty_articles() -> None:
 # ---------------------------------------------------------------------------
 # Risk level sanitisation
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_unknown_risk_level_defaults_to_low() -> None:
@@ -168,6 +172,7 @@ async def test_unknown_risk_level_defaults_to_low() -> None:
 # Gateway error propagates
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_gateway_error_propagates() -> None:
     gw = _mock_gateway(error=RuntimeError("LLM down"))
@@ -179,6 +184,7 @@ async def test_gateway_error_propagates() -> None:
 # ---------------------------------------------------------------------------
 # Confidence threshold is exposed
 # ---------------------------------------------------------------------------
+
 
 def test_confidence_threshold_property() -> None:
     gw = AsyncMock()

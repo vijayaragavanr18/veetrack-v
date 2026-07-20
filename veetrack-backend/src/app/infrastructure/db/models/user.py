@@ -29,6 +29,12 @@ class UserModel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    workspace: Mapped[WorkspaceModel] = relationship("WorkspaceModel", back_populates="users", lazy="raise")
-    watchlists: Mapped[list[WatchlistModel]] = relationship("WatchlistModel", back_populates="user", lazy="raise")
-    audit_logs: Mapped[list[AuditLogModel]] = relationship("AuditLogModel", back_populates="user", lazy="raise")
+    workspace: Mapped[WorkspaceModel] = relationship(
+        "WorkspaceModel", back_populates="users", lazy="raise"
+    )
+    watchlists: Mapped[list[WatchlistModel]] = relationship(
+        "WatchlistModel", back_populates="user", lazy="raise"
+    )
+    audit_logs: Mapped[list[AuditLogModel]] = relationship(
+        "AuditLogModel", back_populates="user", lazy="raise"
+    )

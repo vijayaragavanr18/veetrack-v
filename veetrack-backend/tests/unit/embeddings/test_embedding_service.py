@@ -17,6 +17,7 @@ from app.infrastructure.nlp.embedding_service import (
 # Protocol conformance
 # ---------------------------------------------------------------------------
 
+
 def test_embedding_service_satisfies_protocol() -> None:
     assert isinstance(BgeEmbeddingService.__new__(BgeEmbeddingService), EmbeddingService)
 
@@ -57,6 +58,7 @@ def _make_service(encode_return: np.ndarray | None = None) -> BgeEmbeddingServic
 # embed — single text
 # ---------------------------------------------------------------------------
 
+
 def test_embed_returns_correct_dimension() -> None:
     svc = _make_service()
     vec = svc.embed("Tesla quarterly earnings beat expectations.")
@@ -95,6 +97,7 @@ def test_embed_vector_is_l2_normalised() -> None:
 # embed_batch
 # ---------------------------------------------------------------------------
 
+
 def test_embed_batch_empty_list() -> None:
     svc = _make_service()
     assert svc.embed_batch([]) == []
@@ -119,9 +122,9 @@ def test_embed_batch_empty_strings_get_zero_vectors() -> None:
 
     results = svc.embed_batch(["", "Non-empty article.", ""])
     assert len(results) == 3
-    assert all(v == 0.0 for v in results[0])   # empty → zeros
-    assert all(v == 0.0 for v in results[2])   # empty → zeros
-    assert any(v != 0.0 for v in results[1])   # non-empty → model output
+    assert all(v == 0.0 for v in results[0])  # empty → zeros
+    assert all(v == 0.0 for v in results[2])  # empty → zeros
+    assert any(v != 0.0 for v in results[1])  # non-empty → model output
 
 
 def test_embed_batch_all_empty_does_not_call_model() -> None:
@@ -137,6 +140,7 @@ def test_embed_batch_all_empty_does_not_call_model() -> None:
 # ---------------------------------------------------------------------------
 # Dimension mismatch at load time
 # ---------------------------------------------------------------------------
+
 
 def test_load_fails_on_wrong_dimension() -> None:
     import numpy as np
@@ -156,7 +160,9 @@ def test_load_fails_on_wrong_dimension() -> None:
         patch(
             "sentence_transformers.SentenceTransformer",
             return_value=mock_model,
-        ),pytest.raises(ValueError, match="1024")
+        ),
+        pytest.raises(ValueError, match="1024"),
     ):
         from app.infrastructure.nlp.embedding_service import _load_model
+
         _load_model("some-768d-model")

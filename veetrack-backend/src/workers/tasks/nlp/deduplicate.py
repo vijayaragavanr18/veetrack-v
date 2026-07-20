@@ -75,9 +75,7 @@ async def _run_deduplicate(
 
         target_text: str = result[0] or ""
         if not target_text.strip():
-            logger.info(
-                "nlp.deduplicate.skip_empty_content", article_id=article_id
-            )
+            logger.info("nlp.deduplicate.skip_empty_content", article_id=article_id)
             await engine.dispose()
             return {"status": "skipped_empty"}
 
@@ -111,10 +109,7 @@ async def _run_deduplicate(
 
         if duplicate_of:
             await session.execute(
-                text(
-                    "UPDATE articles SET is_duplicate_of = :dup "
-                    "WHERE id = :id"
-                ),
+                text("UPDATE articles SET is_duplicate_of = :dup WHERE id = :id"),
                 {"dup": duplicate_of, "id": article_id},
             )
             logger.info(

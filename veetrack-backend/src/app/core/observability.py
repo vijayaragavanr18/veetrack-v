@@ -17,12 +17,13 @@ def init_sentry(dsn: str, environment: str, traces_sample_rate: float) -> None:
     if not dsn:
         logger.debug("observability.sentry_disabled")
         return
-    import sentry_sdk
-    from sentry_sdk.integrations.fastapi import FastApiIntegration
-    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-    from sentry_sdk.integrations.asyncio import AsyncioIntegration
-    from sentry_sdk.integrations.logging import LoggingIntegration
     import logging
+
+    import sentry_sdk
+    from sentry_sdk.integrations.asyncio import AsyncioIntegration
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
     sentry_sdk.init(
         dsn=dsn,

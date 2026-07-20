@@ -5,7 +5,6 @@
  * browser download via URL.createObjectURL.
  */
 
-import { useAuthStore } from "@/store/authStore";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 

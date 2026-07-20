@@ -31,13 +31,6 @@ const confidentOnly: MockStory = {
   recommendations: [makeRec({ id: "r1", confidence_score: 0.9 })],
 };
 
-const pendingOnly: MockStory = {
-  ...story,
-  recommendations: [
-    makeRec({ id: "r2", confidence_score: 0.45, needs_human_review: true }),
-  ],
-};
-
 const mixedStory: MockStory = {
   ...story,
   recommendations: [

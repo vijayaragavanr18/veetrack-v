@@ -50,9 +50,7 @@ async def _run_pull(
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-    redis_client: Redis = Redis.from_url(
-        worker_settings.redis_url, decode_responses=False
-    )
+    redis_client: Redis = Redis.from_url(worker_settings.redis_url, decode_responses=False)
     limiter = RedisRateLimiter(
         redis_client,
         source_id,
@@ -124,10 +122,7 @@ async def _run_pull(
 
         # Upsert api_usage_log
         existing = await session.execute(
-            text(
-                "SELECT id FROM api_usage_log "
-                "WHERE source_id = :sid AND window_start = :ws"
-            ),
+            text("SELECT id FROM api_usage_log WHERE source_id = :sid AND window_start = :ws"),
             {"sid": source_id, "ws": window_start},
         )
         row = existing.first()
@@ -161,6 +156,7 @@ async def _run_pull(
 
     for aid in new_article_ids:
         from workers.tasks.nlp.pipeline_orchestrator import dispatch_pipeline
+
         dispatch_pipeline(aid)
 
     logger.info(

@@ -53,8 +53,8 @@ _gliner_model_id: str = ""
 def _get_gliner(model_id: str) -> Any:
     global _gliner_model, _gliner_model_id
     if _gliner_model is None or _gliner_model_id != model_id:
-        from gliner import GLiNER  # type: ignore[import-untyped]
         import torch
+        from gliner import GLiNER  # type: ignore[import-untyped]
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info("extract_entities.loading_gliner", model_id=model_id, device=device)
@@ -225,12 +225,8 @@ async def _run_extract(article_id: str, database_url: str, model_id: str) -> dic
             return {"status": "ok", "entities": 0}
 
         # Fetch all aliases once for fuzzy matching (small table — fits in memory)
-        alias_rows = await session.execute(
-            text("SELECT alias_text, entity_id FROM entity_aliases")
-        )
-        all_aliases: list[tuple[str, str]] = [
-            (r.alias_text, r.entity_id) for r in alias_rows
-        ]
+        alias_rows = await session.execute(text("SELECT alias_text, entity_id FROM entity_aliases"))
+        all_aliases: list[tuple[str, str]] = [(r.alias_text, r.entity_id) for r in alias_rows]
 
         # Deduplicate mentions by surface form; keep highest-scoring mention per surface
         deduped: dict[str, dict[str, Any]] = {}
