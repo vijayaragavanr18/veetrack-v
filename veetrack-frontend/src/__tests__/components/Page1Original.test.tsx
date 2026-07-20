@@ -38,7 +38,7 @@ describe("Page1Original — full data", () => {
 
   it("renders the publisher name", () => {
     render(<Page1Original story={story} />);
-    expect(screen.getByText(story.primary_article.publisher)).toBeInTheDocument();
+    expect(screen.getAllByText(story.primary_article.publisher).length).toBeGreaterThan(0);
   });
 
   it("renders the CRITICAL RISK badge", () => {

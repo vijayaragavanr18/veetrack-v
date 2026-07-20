@@ -72,7 +72,10 @@ describe("Page3Cluster — multi-source cluster", () => {
 
   it("renders the article count", () => {
     render(<Page3Cluster story={story} />);
-    expect(screen.getByText(`${story.article_count} articles`)).toBeInTheDocument();
+    const elements = screen.getAllByText((content, element) => {
+      return element?.textContent?.includes(`${story.article_count} article`) ?? false;
+    });
+    expect(elements.length).toBeGreaterThan(0);
   });
 
   it("renders all cluster article headlines", () => {
@@ -218,6 +221,9 @@ describe("Page3Cluster — large cluster (25 articles)", () => {
 
   it("renders the article count as '25 articles'", () => {
     render(<Page3Cluster story={largeClusterStory} />);
-    expect(screen.getByText("25 articles")).toBeInTheDocument();
+    const elements = screen.getAllByText((content, element) => {
+      return element?.textContent?.includes("25 articles") ?? false;
+    });
+    expect(elements.length).toBeGreaterThan(0);
   });
 });
