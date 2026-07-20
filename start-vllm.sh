@@ -5,7 +5,7 @@ set -e
 
 echo "🚀 Starting vLLM server for VeeTrack..."
 echo "📍 Port: 8080"
-echo "🤖 Model: Qwen/Qwen2.5-7B-Instruct"
+echo "🤖 Model: Qwen/Qwen2.5-3B-Instruct"
 echo ""
 
 # Check GPU
@@ -36,8 +36,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 .venv/bin/python -m vllm.entrypoints.openai.api_server \
-  --model Qwen/Qwen2.5-7B-Instruct \
+  --model Qwen/Qwen2.5-3B-Instruct \
   --port 8080 \
   --host 127.0.0.1 \
   --max-model-len 4096 \
-  --gpu-memory-utilization 0.90
+  --gpu-memory-utilization 0.85
