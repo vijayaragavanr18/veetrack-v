@@ -23,6 +23,7 @@ import Page1Original from "@/components/pages/Page1Original";
 import Page2Insight from "@/components/pages/Page2Insight";
 import Page3Cluster from "@/components/pages/Page3Cluster";
 import Page4Recommendations from "@/components/pages/Page4Recommendations";
+import ArticleChatbot from "@/components/ai/ArticleChatbot";
 
 interface FlipStoryViewerProps {
   stories: MockStory[];
@@ -189,20 +190,23 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
   ) : null;
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 relative overflow-hidden select-none cursor-grab active:cursor-grabbing bg-card"
-      style={{ touchAction: "none" }}
-      data-testid="story-viewport"
-      {...gesture.pointerHandlers}
-    >
-      <VerticalFlipCard
-        currentContent={currentStorySlot}
-        targetContent={lockedAxis === "vertical" ? targetStorySlot : null}
-        direction={dir}
-        progress={lockedAxis === "vertical" ? gesture.progress : idleProgress}
-        cardHeight={cardSize.height}
-      />
-    </div>
+    <>
+      <div
+        ref={containerRef}
+        className="flex-1 relative overflow-hidden select-none cursor-grab active:cursor-grabbing bg-card"
+        style={{ touchAction: "none" }}
+        data-testid="story-viewport"
+        {...gesture.pointerHandlers}
+      >
+        <VerticalFlipCard
+          currentContent={currentStorySlot}
+          targetContent={lockedAxis === "vertical" ? targetStorySlot : null}
+          direction={dir}
+          progress={lockedAxis === "vertical" ? gesture.progress : idleProgress}
+          cardHeight={cardSize.height}
+        />
+      </div>
+      <ArticleChatbot story={story} />
+    </>
   );
 }

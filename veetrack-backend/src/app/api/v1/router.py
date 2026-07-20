@@ -16,6 +16,7 @@ from app.api.v1.admin.review_queue import router as admin_review_queue_router
 from app.api.v1.admin.rss_feeds import router as admin_rss_feeds_router
 from app.api.v1.admin.sources import router as admin_sources_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.chat import router as chat_router
 from app.api.v1.entities import router as entities_router
 from app.api.v1.exports import router as exports_router
 from app.api.v1.feed import router as feed_router
@@ -31,6 +32,7 @@ v1_router = APIRouter(prefix="/api/v1")
 v1_router.include_router(health_router)
 v1_router.include_router(system_router)
 v1_router.include_router(auth_router)
+v1_router.include_router(chat_router)
 v1_router.include_router(admin_dashboard_router)
 v1_router.include_router(admin_sources_router)
 v1_router.include_router(admin_rss_feeds_router)
