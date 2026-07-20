@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { GitBranch, Clock, Layers } from "lucide-react";
+import { Layers, ExternalLink } from "lucide-react";
 import type { MockStory, MockArticle } from "@/types";
-import TimelineEntry from "@/components/ui/TimelineEntry";
 import PublishedTime from "@/components/ui/PublishedTime";
 
 interface Props {
@@ -17,7 +16,7 @@ function sortedChronologically(articles: MockArticle[]): MockArticle[] {
   );
 }
 
-/** Deduplicate publishers for the source summary pill row. */
+/** Deduplicate publishers from article list. */
 function uniquePublishers(articles: MockArticle[]): string[] {
   const seen = new Set<string>();
   return articles.reduce<string[]>((acc, a) => {
@@ -29,28 +28,7 @@ function uniquePublishers(articles: MockArticle[]): string[] {
   }, []);
 }
 
-function SingleArticleState({ article }: { article: MockArticle }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-4 h-full px-8 text-center">
-      <Layers className="h-10 w-10 text-muted-foreground/30" aria-hidden />
-      <div className="space-y-1.5">
-        <p className="text-sm font-semibold text-foreground">Single source so far</p>
-        <p className="text-xs text-muted-foreground max-w-xs">
-          Only one article is in this story cluster. More coverage will appear here as the
-          pipeline finds related articles.
-        </p>
-      </div>
-      <div className="w-full rounded-lg border border-border bg-card px-3 py-2.5 text-left space-y-1">
-        <p className="text-sm font-medium leading-snug">{article.headline}</p>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="font-medium">{article.publisher}</span>
-          <span aria-hidden>·</span>
-          <PublishedTime iso={article.published_at} />
-        </div>
-      </div>
-    </div>
-  );
-}
+const ANALYSIS_PENDING = "Analysis pending…";
 
 export default function Page3Cluster({ story }: Props) {
   const sorted = useMemo(
@@ -60,106 +38,137 @@ export default function Page3Cluster({ story }: Props) {
 
   const publishers = useMemo(() => uniquePublishers(sorted), [sorted]);
 
-  const isSingleArticle = sorted.length <= 1;
+  const pullQuote =
+    story.insight.what_happened && story.insight.what_happened !== ANALYSIS_PENDING
+      ? story.insight.what_happened.slice(0, 120)
+      : null;
+
+  const pullQuoteTruncated =
+    pullQuote !== null && story.insight.what_happened.length > 120;
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="flex items-center gap-2 px-5 pt-5 pb-3 border-b border-border/50 shrink-0">
-        <GitBranch className="h-4 w-4 text-primary shrink-0" aria-hidden />
-        <h2 className="text-lg font-semibold leading-none">Story Cluster</h2>
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-          {story.article_count} article{story.article_count === 1 ? "" : "s"}
+
+      {/* 1. AI Narrative header */}
+      <header className="shrink-0 bg-gradient-to-b from-primary/10 to-transparent px-5 pt-4 pb-3">
+        <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">
+          Story Cluster
         </span>
+        <h2 className="text-base font-bold leading-snug line-clamp-2 mt-0.5">
+          {story.title}
+        </h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          {story.article_count} article{story.article_count === 1 ? "" : "s"}
+          {" · "}
+          {publishers.length} source{publishers.length === 1 ? "" : "s"}
+        </p>
+        {pullQuote !== null && (
+          <blockquote className="mt-2 border-l-2 border-primary pl-3 text-xs italic text-muted-foreground leading-relaxed">
+            {pullQuote}
+            {pullQuoteTruncated ? "…" : ""}
+          </blockquote>
+        )}
       </header>
 
-      {isSingleArticle ? (
-        <SingleArticleState article={story.primary_article} />
-      ) : (
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-
-          {/* Source breadth pills */}
-          {publishers.length > 1 && (
-            <section aria-label="Sources in this cluster">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
-                Sources
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {publishers.map((p) => (
-                  <span
-                    key={p}
-                    className="text-[11px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Key timeline milestones (editorial — from story.timeline_events) */}
-          {story.timeline_events.length > 0 && (
-            <section aria-labelledby="milestones-heading">
-              <p
-                id="milestones-heading"
-                className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3"
-              >
-                Key Milestones
-              </p>
-              <ol className="space-y-3" aria-label="Story milestones">
-                {story.timeline_events.map((event, i) => (
-                  <li key={i} className="flex gap-3 text-xs">
-                    <div className="flex flex-col items-center shrink-0 w-4">
-                      <div className={`w-px ${i === 0 ? "h-2 invisible" : "h-2 bg-border"}`} />
-                      <div className="h-2 w-2 rounded-full bg-primary shrink-0" aria-hidden />
-                      <div
-                        className={`w-px flex-1 ${i === story.timeline_events.length - 1 ? "invisible" : "bg-border"}`}
-                      />
-                    </div>
-                    <div className="pb-3">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="font-semibold text-foreground">{event.label}</span>
-                        <span className="text-muted-foreground/50" aria-hidden>·</span>
-                        <span className="flex items-center gap-1 text-muted-foreground/70">
-                          <Clock className="h-3 w-3" aria-hidden />
-                          <PublishedTime iso={event.at} className="text-[11px]" />
-                        </span>
-                      </div>
-                      <p className="text-muted-foreground leading-relaxed">{event.description}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          {/* Article timeline — sorted chronologically */}
-          <section aria-labelledby="coverage-heading">
-            <p
-              id="coverage-heading"
-              className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3"
+      {/* 2. Source pills row — skip if no publishers */}
+      {publishers.length > 0 && (
+        <div
+          className="shrink-0 flex gap-2 px-5 py-2 overflow-x-auto"
+          aria-label="Sources in this cluster"
+        >
+          {publishers.map((p) => (
+            <span
+              key={p}
+              className="bg-secondary rounded-full text-[11px] px-2 py-0.5 whitespace-nowrap text-secondary-foreground shrink-0"
             >
-              Coverage Timeline
-            </p>
-            {/* overflow-anchor prevents scroll jump when entries above expand */}
-            <ol
-              className="list-none"
-              aria-label={`${sorted.length} articles in chronological order`}
-            >
-              {sorted.map((article, i) => (
-                <li key={article.id}>
-                  <TimelineEntry
-                    article={article}
-                    isFirst={i === 0}
-                    isLast={i === sorted.length - 1}
-                  />
-                </li>
-              ))}
-            </ol>
-          </section>
-
+              {p}
+            </span>
+          ))}
         </div>
       )}
+
+      {/* 3. Coverage timeline */}
+      <section
+        className="flex-1 overflow-y-auto px-5 pb-4"
+        aria-labelledby="coverage-heading"
+      >
+        <p
+          id="coverage-heading"
+          className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground pt-3 pb-2"
+        >
+          Coverage Timeline
+        </p>
+
+        {sorted.length === 0 ? (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+            <Layers className="h-8 w-8 text-muted-foreground/30" aria-hidden />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">Building cluster…</p>
+              <p className="text-xs text-muted-foreground max-w-xs">
+                Articles are being grouped as the pipeline runs. Check back shortly.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <ol
+            className="list-none"
+            aria-label={`${sorted.length} article${sorted.length === 1 ? "" : "s"} in chronological order`}
+          >
+            {sorted.map((article, i) => {
+              const isLast = i === sorted.length - 1;
+              return (
+                <li key={article.id} className="flex gap-3">
+
+                  {/* Git-log vertical connector + dot */}
+                  <div className="flex flex-col items-center shrink-0 w-4">
+                    <div
+                      className={`w-px ${i === 0 ? "h-2 invisible" : "h-2 bg-border"}`}
+                    />
+                    <div
+                      className="h-2.5 w-2.5 rounded-full border-2 border-primary/60 bg-background shrink-0 z-10"
+                      aria-hidden
+                    />
+                    <div
+                      className={`w-px flex-1 ${isLast ? "invisible" : "bg-border"}`}
+                    />
+                  </div>
+
+                  {/* Article content */}
+                  <div className="flex-1 min-w-0 pb-3">
+                    {article.url ? (
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-start gap-1 group font-medium text-sm leading-snug hover:text-primary transition-colors"
+                        aria-label={`${article.headline} — opens in new tab`}
+                      >
+                        <span className="line-clamp-2">{article.headline}</span>
+                        <ExternalLink
+                          className="h-3 w-3 shrink-0 mt-0.5 text-muted-foreground/50 group-hover:text-primary transition-colors"
+                          aria-hidden
+                        />
+                      </a>
+                    ) : (
+                      <p className="font-medium text-sm leading-snug line-clamp-2">
+                        {article.headline}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                      <span className="font-medium">{article.publisher}</span>
+                      <span aria-hidden>·</span>
+                      <PublishedTime iso={article.published_at} />
+                    </div>
+                  </div>
+
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </section>
+
     </div>
   );
 }

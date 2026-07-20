@@ -81,6 +81,11 @@ async def _run_pull(
     window_start = now.replace(second=0, microsecond=0)
 
     async with factory() as session, session.begin():
+        from sqlalchemy import text as _text
+        await session.execute(
+            _text("INSERT INTO sources (id, type, config_json, is_active) VALUES (:id, 'rss', '{}', true) ON CONFLICT (id) DO NOTHING"),
+            {"id": source_id},
+        )
         for article in articles:
             dedup_hash = _make_dedup_hash(article.external_id, source_id)
             result = await session.execute(

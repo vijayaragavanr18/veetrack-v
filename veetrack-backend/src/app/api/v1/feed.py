@@ -11,8 +11,10 @@ GET /stories/{id}
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
+import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -20,12 +22,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.search.feed_types import (
+    ArticleSummaryItem,
     FeedPage,
     StoryPayload,
 )
 from app.application.use_cases.search.get_feed import GetFeed
+from app.core.config import get_settings
 from app.core.container import get_cache_gateway, get_db_session, get_task_dispatcher
-from app.core.security_deps import get_current_user
+from app.core.security_deps import get_optional_user
 from app.domain.entities import User
 from app.domain.interfaces.services import CacheGateway, TaskDispatcher
 
@@ -43,6 +47,9 @@ class ArticleItem(BaseModel):
     publisher: str
     published_at: str
     sentiment_label: str
+    hero_image_url: str | None = None
+    url: str = ""
+    content_preview: str = ""
 
 
 class InsightSchema(BaseModel):
@@ -106,11 +113,11 @@ def _make_db_query(session: AsyncSession):  # type: ignore[no-untyped-def]
 async def get_feed(
     entity: Annotated[str, Query(min_length=1, max_length=200)],
     cursor: Annotated[str | None, Query()] = None,
-    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    limit: Annotated[int, Query(ge=1, le=25)] = 25,
     session: Annotated[AsyncSession, Depends(get_db_session)] = ...,  # type: ignore[assignment]
     cache: Annotated[CacheGateway, Depends(get_cache_gateway)] = ...,  # type: ignore[assignment]
     dispatcher: Annotated[TaskDispatcher, Depends(get_task_dispatcher)] = ...,  # type: ignore[assignment]
-    _: Annotated[User, Depends(get_current_user)] = ...,  # type: ignore[assignment]
+    _: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> FeedResponse:
     """Return the story feed for an entity keyword.
 
@@ -123,6 +130,13 @@ async def get_feed(
         db_query=_make_db_query(session),
     )
     page: FeedPage = await use_case.execute(entity, cursor=cursor, limit=limit)
+
+    # If DB/cache returned nothing, fetch live from NewsData as immediate fallback
+    if not page.stories and not cursor:
+        live_page = await _live_fetch_fallback(entity)
+        if live_page:
+            page = live_page
+
     return FeedResponse(
         stories=[_story_to_schema(s) for s in page.stories],
         next_cursor=page.next_cursor,
@@ -136,7 +150,7 @@ async def get_feed(
 async def get_story(
     story_id: str,
     session: Annotated[AsyncSession, Depends(get_db_session)],
-    _: Annotated[User, Depends(get_current_user)],
+    _: Annotated[User | None, Depends(get_optional_user)] = None,
 ) -> StorySchema:
     """Return single story detail."""
     row = await session.execute(
@@ -173,6 +187,88 @@ async def get_story(
 
 
 # ---------------------------------------------------------------------------
+# Live fallback fetch — called when cold path finds nothing in DB
+# ---------------------------------------------------------------------------
+
+
+async def _live_fetch_fallback(entity_query: str) -> FeedPage | None:
+    """Fetch from NewsData.io directly and return a FeedPage without persisting to DB.
+
+    Used as an immediate fallback when a search term has no cached or DB results.
+    Articles are returned in-memory only — the Celery pipeline will ingest them properly later.
+    """
+    settings = get_settings()
+    api_key = settings.newsdata_api_key
+    if not api_key:
+        return None
+
+    since = datetime.now(UTC) - timedelta(hours=48)
+    params = {
+        "apikey": api_key,
+        "q": entity_query,
+        "language": "en",
+        "size": "10",
+        "timeframe": "48",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get("https://newsdata.io/api/1/latest", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.warning("feed.live_fallback.failed", error=str(exc))
+        return None
+
+    results = data.get("results") or []
+    if not results:
+        return None
+
+    articles: list[ArticleSummaryItem] = []
+    for item in results[:10]:
+        pub_raw = item.get("pubDate") or ""
+        try:
+            pub_dt = datetime.strptime(pub_raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC) if pub_raw else datetime.now(UTC)
+        except ValueError:
+            pub_dt = datetime.now(UTC)
+        if pub_dt < since:
+            continue
+        articles.append(
+            ArticleSummaryItem(
+                id=str(item.get("article_id") or item.get("link") or ""),
+                headline=str(item.get("title") or ""),
+                publisher=str(item.get("source_name") or item.get("source_id") or ""),
+                published_at=pub_dt.isoformat(),
+                sentiment_label="neutral",
+                hero_image_url=item.get("image_url") or None,
+                url=str(item.get("link") or ""),
+                content_preview=str(item.get("description") or item.get("content") or "")[:300],
+            )
+        )
+
+    if not articles:
+        return None
+
+    story = StoryPayload(
+        id=f"live-{entity_query.lower().replace(' ', '-')[:40]}",
+        title=f"{entity_query} — Live Results",
+        status="active",
+        risk_level="low",
+        primary_entity_id="",
+        entity_name=entity_query,
+        article_count=len(articles),
+        articles=articles,
+        updated_at=datetime.now(UTC).isoformat(),
+    )
+    return FeedPage(
+        stories=[story],
+        next_cursor=None,
+        entity_id="",
+        entity_name=entity_query,
+        path="cold",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -193,6 +289,9 @@ def _story_to_schema(s: StoryPayload) -> StorySchema:
                 publisher=a.publisher,
                 published_at=a.published_at,
                 sentiment_label=a.sentiment_label,
+                hero_image_url=a.hero_image_url,
+                url=a.url,
+                content_preview=a.content_preview,
             )
             for a in s.articles
         ],

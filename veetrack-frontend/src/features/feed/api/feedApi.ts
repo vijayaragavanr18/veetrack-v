@@ -19,6 +19,9 @@ export interface ApiArticleItem {
   publisher: string;
   published_at: string;
   sentiment_label: string;
+  hero_image_url?: string | null;
+  url?: string;
+  content_preview?: string;
 }
 
 export interface ApiInsight {
@@ -65,10 +68,11 @@ function adaptArticle(a: ApiArticleItem): MockArticle {
   return {
     id: a.id,
     headline: a.headline,
-    hero_image_url: null,
+    hero_image_url: a.hero_image_url ?? null,
     publisher: a.publisher,
     published_at: a.published_at,
-    url: "",
+    url: a.url ?? "",
+    content_preview: a.content_preview ?? "",
     sentiment_label: (a.sentiment_label as MockArticle["sentiment_label"]) ?? "neutral",
     sentiment_score: 0,
     language: "en",
@@ -155,12 +159,12 @@ export interface FeedParams {
 export async function fetchFeed({
   entity,
   cursor,
-  limit = 20,
+  limit = 25,
   accessToken,
 }: FeedParams): Promise<FeedResponse> {
   const params = new URLSearchParams({ entity });
   if (cursor) params.set("cursor", cursor);
-  if (limit !== 20) params.set("limit", String(limit));
+  if (limit !== 25) params.set("limit", String(limit));
   return apiFetch<FeedResponse>(
     `/api/v1/feed?${params.toString()}`,
     accessToken,
@@ -172,7 +176,7 @@ export async function fetchFeedDirect(
   entity: string,
   cursor?: string | null,
 ): Promise<FeedResponse> {
-  const params = new URLSearchParams({ entity });
+  const params = new URLSearchParams({ entity: entity });
   if (cursor) params.set("cursor", cursor);
   const res = await fetch(`${API_BASE}/api/v1/feed?${params.toString()}`, {
     credentials: "include",

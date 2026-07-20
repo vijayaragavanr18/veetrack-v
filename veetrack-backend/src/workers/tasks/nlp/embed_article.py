@@ -38,15 +38,16 @@ class EmbeddingSettings(BaseSettings):
 
     database_url: str = ""
     embedding_model_id: str = _DEFAULT_EMBEDDING_MODEL
+    # Force CPU so BGE doesn't compete with vLLM for GPU memory.
+    # Set EMBEDDING_DEVICE=cuda to use GPU only when vLLM is not running.
+    embedding_device: str = "cpu"
 
 
-def _get_model(model_id: str) -> Any:
+def _get_model(model_id: str, device: str = "cpu") -> Any:
     global _embedding_model, _embedding_model_id
     if _embedding_model is None or _embedding_model_id != model_id:
-        import torch
         from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info("embed_article.loading_model", model_id=model_id, device=device)
         model = SentenceTransformer(model_id, device=device)
         model.eval()
@@ -75,7 +76,9 @@ def _embed_text(model: Any, text: str) -> list[float]:
     return [float(v) for v in vecs[0]]
 
 
-async def _run_embed(article_id: str, database_url: str, model_id: str) -> dict[str, Any]:
+async def _run_embed(
+    article_id: str, database_url: str, model_id: str, device: str = "cpu"
+) -> dict[str, Any]:
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -99,13 +102,13 @@ async def _run_embed(article_id: str, database_url: str, model_id: str) -> dict[
             await engine.dispose()
             return {"status": "skipped_empty"}
 
-        model = _get_model(model_id)
+        model = _get_model(model_id, device)
         vector = _embed_text(model, clean_content[:8192])
 
-        # pgvector expects a Python list; SQLAlchemy + asyncpg handle the cast
+        vec_str = "[" + ",".join(f"{v:.8f}" for v in vector) + "]"
         await session.execute(
-            text("UPDATE articles SET embedding = :vec::vector WHERE id = :id"),
-            {"vec": str(vector), "id": article_id},
+            text("UPDATE articles SET embedding = CAST(:vec AS vector) WHERE id = :id"),
+            {"vec": vec_str, "id": article_id},
         )
 
     await engine.dispose()
@@ -129,7 +132,12 @@ def run(self: object, *, article_id: str) -> dict[str, Any]:  # type: ignore[mis
 
     try:
         return asyncio.run(
-            _run_embed(article_id, settings.database_url, settings.embedding_model_id)
+            _run_embed(
+                article_id,
+                settings.database_url,
+                settings.embedding_model_id,
+                settings.embedding_device,
+            )
         )
     except Exception as exc:
         logger.error("embed_article.failed", article_id=article_id, error=str(exc))

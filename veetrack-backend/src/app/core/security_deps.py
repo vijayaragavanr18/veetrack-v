@@ -45,6 +45,22 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    jwt_service: Annotated[JwtService, Depends(get_jwt_service)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> User | None:
+    """Like get_current_user but returns None instead of raising when no token."""
+    if credentials is None:
+        return None
+    try:
+        payload = jwt_service.decode_access_token(credentials.credentials)
+        from app.infrastructure.db.repositories.user import SqlAlchemyUserRepository
+        return await SqlAlchemyUserRepository(session).get_by_id(payload["sub"])
+    except Exception:
+        return None
+
+
 def require_role(min_role: Role) -> Callable[[User], Coroutine[Any, Any, User]]:
     """Return a dependency that enforces a minimum role level.
 

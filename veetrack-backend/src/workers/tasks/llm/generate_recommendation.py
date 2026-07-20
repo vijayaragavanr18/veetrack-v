@@ -34,10 +34,8 @@ class RecommendationSettings(BaseSettings):
 
     database_url: str = ""
     redis_url: str = "redis://localhost:6379/0"
-    anthropic_api_key: str = ""
-    llm_hosted_model: str = "claude-haiku-4-5-20251001"
     llm_local_endpoint: str = "http://localhost:8080/v1/chat/completions"
-    llm_local_model: str = "Qwen/Qwen2.5-3B-Instruct-AWQ"
+    llm_local_model: str = "Qwen/Qwen2.5-3B-Instruct"
     llm_min_articles: int = 3
     recommendation_confidence_threshold: float = 0.65
 
@@ -111,7 +109,6 @@ async def _run_generate(story_id: str, settings: RecommendationSettings) -> dict
         from app.application.use_cases.recommendations.generate_recommendation import (
             GenerateRecommendation,
         )
-        from app.infrastructure.llm.hosted_client import HostedClient
         from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
         from app.infrastructure.llm.vllm_client import VllmClient
 
@@ -119,15 +116,9 @@ async def _run_generate(story_id: str, settings: RecommendationSettings) -> dict
             model=settings.llm_local_model,
             endpoint=settings.llm_local_endpoint,
         )
-        hosted_client = HostedClient(
-            model=settings.llm_hosted_model,
-            api_key=settings.anthropic_api_key,
-            db_url=settings.database_url,
-            story_id=story_id,
-        )
         gateway = RoutingLLMGateway(
             local_client=local_client,
-            hosted_client=hosted_client,
+            hosted_client=None,
             redis=redis,
             default_tier="local",
         )

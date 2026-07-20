@@ -24,7 +24,7 @@ from workers.connectors.base import CircuitOpen, RateLimitExceeded, RedisRateLim
 logger = structlog.get_logger(__name__)
 
 _BASE_URL = "https://newsdata.io/api/1"
-_SEARCH_PATH = "/news/search"
+_SEARCH_PATH = "/latest"
 
 _RETRY_POLICY = dict(
     retry=retry_if_exception_type((httpx.TransportError, httpx.TimeoutException)),
@@ -109,12 +109,11 @@ class NewsDataClient:
 
     @retry(**_RETRY_POLICY)
     async def _do_fetch(self, query: str, since: datetime) -> list[RawArticle]:
-        from_date = since.strftime("%Y-%m-%d")
         params: dict[str, str] = {
             "apikey": self._api_key,
             "q": query,
-            "from_date": from_date,
             "language": "en",
+            "size": "10",
         }
         resp = await self._http.get(f"{_BASE_URL}{_SEARCH_PATH}", params=params)
 
@@ -137,7 +136,7 @@ class NewsDataClient:
         results = []
         for item in data.get("results") or []:
             article = _map_article(item)
-            if article is not None:
+            if article is not None and article.published_at >= since:
                 results.append(article)
 
         logger.info(

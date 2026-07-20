@@ -17,7 +17,7 @@ from app.infrastructure.connectors.newsdata_connector import (
 )
 
 SOURCE_ID = "nd-test"
-SINCE = datetime.now(UTC) - timedelta(hours=1)
+SINCE = datetime.now(UTC) - timedelta(hours=24)
 
 
 @pytest.fixture()
@@ -132,7 +132,7 @@ _GOOD_RESPONSE = {
             "link": "https://newsdata.io/article/1",
             "title": "Tesla Autopilot Update",
             "source_name": "TechCrunch",
-            "pubDate": "2024-12-10 10:00:00",
+            "pubDate": "2026-07-20 13:40:00",
             "content": "Article body text.",
             "language": "en",
             "image_url": None,
@@ -144,7 +144,7 @@ _GOOD_RESPONSE = {
 @pytest.mark.asyncio
 @respx.mock
 async def test_fetch_success(connector: NewsDataConnector) -> None:
-    respx.get("https://newsdata.io/api/1/news/search").mock(
+    respx.get("https://newsdata.io/api/1/latest").mock(
         return_value=httpx.Response(200, json=_GOOD_RESPONSE)
     )
     articles = await connector.fetch("Tesla", SINCE)
@@ -164,7 +164,7 @@ async def test_fetch_skips_invalid_items(connector: NewsDataConnector) -> None:
             {"link": "https://example.com"},  # no title
         ],
     }
-    respx.get("https://newsdata.io/api/1/news/search").mock(
+    respx.get("https://newsdata.io/api/1/latest").mock(
         return_value=httpx.Response(200, json=bad_response)
     )
     articles = await connector.fetch("test", SINCE)
@@ -176,7 +176,7 @@ async def test_fetch_skips_invalid_items(connector: NewsDataConnector) -> None:
 async def test_fetch_401_raises_service_unavailable(connector: NewsDataConnector) -> None:
     from app.domain.exceptions import ServiceUnavailableError
 
-    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(401))
+    respx.get("https://newsdata.io/api/1/latest").mock(return_value=httpx.Response(401))
     with pytest.raises(ServiceUnavailableError, match="invalid API key"):
         await connector.fetch("test", SINCE)
 
@@ -186,7 +186,7 @@ async def test_fetch_401_raises_service_unavailable(connector: NewsDataConnector
 async def test_fetch_429_raises_service_unavailable(connector: NewsDataConnector) -> None:
     from app.domain.exceptions import ServiceUnavailableError
 
-    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(429))
+    respx.get("https://newsdata.io/api/1/latest").mock(return_value=httpx.Response(429))
     with pytest.raises(ServiceUnavailableError, match="quota exhausted"):
         await connector.fetch("test", SINCE)
 
@@ -196,7 +196,7 @@ async def test_fetch_429_raises_service_unavailable(connector: NewsDataConnector
 async def test_fetch_unexpected_status_raises(connector: NewsDataConnector) -> None:
     from app.domain.exceptions import ServiceUnavailableError
 
-    respx.get("https://newsdata.io/api/1/news/search").mock(
+    respx.get("https://newsdata.io/api/1/latest").mock(
         return_value=httpx.Response(200, json={"status": "error", "results": []})
     )
     with pytest.raises(ServiceUnavailableError, match="unexpected status"):
@@ -214,7 +214,7 @@ async def test_fetch_increments_failure_counter_on_error(
         source_id=SOURCE_ID,
         rate_limiter=limiter,
     )
-    respx.get("https://newsdata.io/api/1/news/search").mock(return_value=httpx.Response(500))
+    respx.get("https://newsdata.io/api/1/latest").mock(return_value=httpx.Response(500))
     from app.domain.exceptions import ServiceUnavailableError
 
     with pytest.raises(ServiceUnavailableError):

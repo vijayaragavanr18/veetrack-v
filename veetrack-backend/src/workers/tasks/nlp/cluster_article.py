@@ -188,10 +188,10 @@ async def _run_cluster(
                 )
                 await session.execute(
                     text(
-                        "UPDATE stories SET cluster_centroid = :vec::vector, "
+                        "UPDATE stories SET cluster_centroid = CAST(:vec AS vector), "
                         "updated_at = now() WHERE id = :id"
                     ),
-                    {"vec": str(new_centroid), "id": best_story_id},
+                    {"vec": "[" + ",".join(f"{v:.8f}" for v in new_centroid) + "]", "id": best_story_id},
                 )
                 await _update_centroid_in_cache(redis, best_story_id, new_centroid, new_count)
 
@@ -243,13 +243,13 @@ async def _run_cluster(
                     text(
                         "INSERT INTO stories (id, primary_entity_id, title, status, "
                         "cluster_centroid, risk_level) "
-                        "VALUES (:id, :eid, :title, 'active', :vec::vector, 'low')"
+                        "VALUES (:id, :eid, :title, 'active', CAST(:vec AS vector), 'low')"
                     ),
                     {
                         "id": new_story_id,
                         "eid": primary_entity_id,
                         "title": title,
-                        "vec": str(article_vec),
+                        "vec": "[" + ",".join(f"{v:.8f}" for v in article_vec) + "]",
                     },
                 )
                 await session.execute(

@@ -38,9 +38,9 @@ _ALIAS_KEY_PREFIX = "vt:alias:"
 
 logger = structlog.get_logger(__name__)
 
-_PAGE_SIZE = 20
+_PAGE_SIZE = 25  # max stories per page — enough for a PR team's daily brief
 _COLD_PATH_ARTICLE_LIMIT = 50  # max articles to pull for cold query
-_COLD_PATH_STORY_LIMIT = 10  # cap stories surfaced in cold path
+_COLD_PATH_STORY_LIMIT = 25  # cap stories surfaced in cold path
 
 
 class GetFeed:
@@ -236,6 +236,7 @@ class GetFeed:
                 LEFT JOIN story_articles sa ON sa.story_id = s.id
                 WHERE s.primary_entity_id = :eid
                   AND s.status = 'active'
+                  AND s.updated_at >= NOW() - INTERVAL '48 hours'
                   {cursor_clause}
                 GROUP BY s.id, e.canonical_name
                 ORDER BY s.updated_at DESC
@@ -258,6 +259,7 @@ class GetFeed:
                 JOIN entities e ON e.id = s.primary_entity_id
                 JOIN story_articles sa2 ON sa2.story_id = s.id
                 WHERE s.status = 'active'
+                  AND a.published_at >= NOW() - INTERVAL '48 hours'
                   AND (
                     a.headline % :kw
                     OR to_tsvector('english', coalesce(a.clean_content,''))
@@ -279,7 +281,8 @@ class GetFeed:
         article_rows = await self._db_query(
             """
             SELECT a.id, a.headline, a.publisher, a.published_at,
-                   a.sentiment_label, sa.story_id
+                   a.sentiment_label, a.hero_image_url, a.url, sa.story_id,
+                   LEFT(COALESCE(NULLIF(a.clean_content,''), NULLIF(a.raw_content,''), ''), 300) AS content_preview
             FROM articles a
             JOIN story_articles sa ON sa.article_id = a.id
             WHERE sa.story_id = ANY(:sids)
@@ -299,6 +302,9 @@ class GetFeed:
                         publisher=str(ar["publisher"] or ""),
                         published_at=ar["published_at"].isoformat() if ar["published_at"] else "",
                         sentiment_label=str(ar["sentiment_label"] or "neutral"),
+                        hero_image_url=ar.get("hero_image_url"),
+                        url=str(ar.get("url") or ""),
+                        content_preview=str(ar.get("content_preview") or ""),
                     )
                 )
 

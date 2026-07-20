@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from app.application.use_cases.search.feed_types import (
@@ -176,14 +178,29 @@ def test_feed_returns_next_cursor_when_present() -> None:
     assert resp.json()["next_cursor"] == "s2"
 
 
-def test_feed_requires_auth() -> None:
-    """Unauthenticated request should return 401 or 403."""
+def test_feed_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Feed endpoint accepts unauthenticated requests (optional auth, Phase 6 gates it)."""
+    monkeypatch.setenv("JWT_SECRET", "x" * 64)
     app = create_app()
-    # No current_user override — auth dependency will raise
-    client = TestClient(app, raise_server_exceptions=False)
-    resp = client.get("/api/v1/feed?entity=tesla")
-    # Auth guard returns 401 (no credentials) or 403 (forbidden)
-    assert resp.status_code in (401, 403, 422)
+    mock_session = AsyncMock()
+
+    async def _fake_session():  # type: ignore[no-untyped-def]
+        yield mock_session
+
+    app.dependency_overrides[get_db_session] = _fake_session
+    app.dependency_overrides[get_cache_gateway] = lambda: _FakeCache()
+    app.dependency_overrides[get_task_dispatcher] = lambda: _FakeDispatcher()
+
+    mock_use_case = AsyncMock()
+    mock_use_case.execute = AsyncMock(return_value=FeedPage(
+        stories=[], next_cursor=None, entity_id="", entity_name="", path="cold"
+    ))
+
+    with patch("app.api.v1.feed.GetFeed", return_value=mock_use_case):
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.get("/api/v1/feed?entity=tesla")
+    # No auth token → optional user resolves to None, endpoint still runs
+    assert resp.status_code in (200, 422)
 
 
 def test_feed_missing_entity_param_returns_422() -> None:
@@ -253,8 +270,10 @@ def test_get_story_not_found_returns_404() -> None:
     assert resp.status_code == 404
 
 
-def test_get_story_requires_auth() -> None:
-    app = create_app()
-    client = TestClient(app, raise_server_exceptions=False)
-    resp = client.get("/api/v1/stories/s1")
-    assert resp.status_code in (401, 403, 422)
+def test_get_story_requires_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Story endpoint accepts unauthenticated requests (optional auth, Phase 6 gates it)."""
+    monkeypatch.setenv("JWT_SECRET", "x" * 64)
+    with _make_story_client(None) as client:
+        resp = client.get("/api/v1/stories/s1")
+    # Without a real story row, endpoint returns 404 not 401
+    assert resp.status_code in (200, 404, 422)

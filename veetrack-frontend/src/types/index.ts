@@ -15,6 +15,7 @@ export interface MockArticle {
   publisher: string;
   published_at: string;
   url: string;
+  content_preview?: string;
   sentiment_label: SentimentLabel;
   sentiment_score: number;
   language: string;

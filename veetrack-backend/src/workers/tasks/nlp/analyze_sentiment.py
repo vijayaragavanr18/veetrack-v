@@ -48,15 +48,16 @@ class SentimentSettings(BaseSettings):
 
     database_url: str = ""
     sentiment_model_id: str = _DEFAULT_SENTIMENT_MODEL
+    # Force CPU (-1) by default so sentiment doesn't compete with vLLM for GPU memory.
+    # Set SENTIMENT_DEVICE=0 to use GPU when vLLM is not running.
+    sentiment_device: int = -1
 
 
-def _get_pipeline(model_id: str) -> Any:
+def _get_pipeline(model_id: str, device: int = -1) -> Any:
     global _sentiment_pipeline, _sentiment_model_id
     if _sentiment_pipeline is None or _sentiment_model_id != model_id:
-        import torch
         from transformers import pipeline  # type: ignore[import-untyped]
 
-        device = 0 if torch.cuda.is_available() else -1
         logger.info("analyze_sentiment.loading_model", model_id=model_id, device=device)
         _sentiment_pipeline = pipeline(
             "text-classification",
@@ -67,6 +68,10 @@ def _get_pipeline(model_id: str) -> Any:
         )
         _sentiment_model_id = model_id
     return _sentiment_pipeline
+
+
+def _get_pipeline_from_settings(settings: SentimentSettings) -> Any:
+    return _get_pipeline(settings.sentiment_model_id, settings.sentiment_device)
 
 
 def _classify(pipe: Any, text: str) -> tuple[str, float, bool]:
@@ -83,7 +88,9 @@ def _classify(pipe: Any, text: str) -> tuple[str, float, bool]:
     return label, score, low_confidence
 
 
-async def _run_analyze(article_id: str, database_url: str, model_id: str) -> dict[str, Any]:
+async def _run_analyze(
+    article_id: str, database_url: str, model_id: str, device: int = -1
+) -> dict[str, Any]:
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -104,7 +111,7 @@ async def _run_analyze(article_id: str, database_url: str, model_id: str) -> dic
         clean_content: str = result[0] or ""
 
         # Inference runs synchronously (transformers pipeline is sync)
-        pipe = _get_pipeline(model_id)
+        pipe = _get_pipeline(model_id, device)
         label, score, low_confidence = _classify(pipe, clean_content[:2048])
 
         await session.execute(
@@ -142,7 +149,12 @@ def run(self: object, *, article_id: str) -> dict[str, Any]:  # type: ignore[mis
 
     try:
         return asyncio.run(
-            _run_analyze(article_id, settings.database_url, settings.sentiment_model_id)
+            _run_analyze(
+                article_id,
+                settings.database_url,
+                settings.sentiment_model_id,
+                settings.sentiment_device,
+            )
         )
     except Exception as exc:
         logger.error("analyze_sentiment.failed", article_id=article_id, error=str(exc))

@@ -27,7 +27,7 @@ from app.infrastructure.connectors.base import RedisRateLimiter
 logger = structlog.get_logger(__name__)
 
 _BASE_URL = "https://newsdata.io/api/1"
-_SEARCH_PATH = "/news/search"
+_SEARCH_PATH = "/latest"
 
 # Retry policy: up to 3 attempts with exponential back-off on transient errors.
 # Does NOT retry on 4xx (auth/quota errors) — only on network/5xx.
@@ -132,12 +132,11 @@ class NewsDataConnector:
         reraise=True,
     )
     async def _fetch_with_retry(self, query: str, since: datetime) -> list[RawArticle]:
-        from_date = since.strftime("%Y-%m-%d")
         params: dict[str, str] = {
             "apikey": self._api_key,
             "q": query,
-            "from_date": from_date,
             "language": "en",
+            "size": "10",
         }
         resp = await self._http.get(f"{_BASE_URL}{_SEARCH_PATH}", params=params)
 
@@ -161,7 +160,7 @@ class NewsDataConnector:
         results: list[RawArticle] = []
         for item in data.get("results") or []:
             article = _map_article(item, self._source_id)
-            if article is not None:
+            if article is not None and article.published_at >= since:
                 results.append(article)
 
         logger.info(

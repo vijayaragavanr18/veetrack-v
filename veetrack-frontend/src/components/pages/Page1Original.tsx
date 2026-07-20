@@ -1,33 +1,16 @@
 "use client";
 
-/**
- * Page 1 — Original story view.
- *
- * Layout: fixed-aspect hero image (no layout shift) → headline → metadata row
- * → entity tags → story context paragraph.
- *
- * Hero image notes:
- *   - aspect-[16/7] container always reserves space → zero CLS
- *   - `onError` swaps to the BookOpen fallback without a flash
- *   - blur placeholder via blurDataURL (inline 1×1 muted-tone LQIP)
- */
-
 import { useState } from "react";
 import Image from "next/image";
-import { BookOpen, AlertTriangle, BookMarked } from "lucide-react";
+import { BookOpen, ExternalLink } from "lucide-react";
 import type { MockStory } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import SentimentBadge from "@/components/ui/SentimentBadge";
-import SourceIcon from "@/components/ui/SourceIcon";
 import PublishedTime from "@/components/ui/PublishedTime";
 import WatchlistToggle from "@/components/ui/WatchlistToggle";
+import CategoryTag from "@/components/ui/CategoryTag";
+import EngagementRow from "@/components/ui/EngagementRow";
+import { useSavedStore } from "@/store/savedStore";
 
-interface Props {
-  story: MockStory;
-}
-
-// 1×1 dark-grey PNG as a tiny base64 blur placeholder — prevents the
-// white-flash that appears before next/image loads the real image.
 const LQIP =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -38,20 +21,30 @@ const riskVariant: Record<string, "low" | "medium" | "high" | "critical"> = {
   critical: "critical",
 };
 
+interface Props {
+  story: MockStory;
+}
+
 export default function Page1Original({ story }: Props) {
   const { primary_article: article } = story;
   const [imgError, setImgError] = useState(false);
+  const { saveStory, unsaveStory, isSaved } = useSavedStore();
+  const saved = isSaved(story.id);
 
   const showImage = !!article.hero_image_url && !imgError;
+  const entityLabel = story.entities[0]?.canonical_name ?? story.title.split(" ")[0];
+  const primaryEntity = story.entities[0];
+
+  // Body: real content preview > story title fallback
+  const bodyText =
+    article.content_preview?.trim() ||
+    (story.title !== article.headline ? story.title : null) ||
+    `${story.article_count} article${story.article_count === 1 ? "" : "s"} tracked. Swipe right for the full AI analysis.`;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      {/* ── Hero image ────────────────────────────────────────────────────── */}
-      {/*
-        aspect-[16/7] is set on the container, not the image, so the space is
-        always reserved regardless of whether the image has loaded — zero CLS.
-      */}
-      <div className="relative w-full aspect-[16/7] shrink-0 bg-muted overflow-hidden rounded-t-lg">
+    <div className="flex flex-col h-full overflow-hidden bg-card">
+      {/* ── Hero image — full-bleed, 42% of card ─────────────────────── */}
+      <div className="relative w-full flex-none" style={{ height: "42%" }}>
         {showImage ? (
           <Image
             src={article.hero_image_url!}
@@ -59,97 +52,100 @@ export default function Page1Original({ story }: Props) {
             aria-hidden
             fill
             className="object-cover"
-            sizes="(max-width: 768px) 100vw, 800px"
+            sizes="430px"
             priority
             placeholder="blur"
             blurDataURL={LQIP}
             onError={() => setImgError(true)}
           />
         ) : (
-          <div className="flex items-center justify-center h-full bg-muted" aria-hidden>
-            <BookOpen className="h-12 w-12 text-muted-foreground opacity-40" />
+          <div className="flex items-center justify-center w-full h-full bg-muted" aria-hidden>
+            <BookOpen className="h-14 w-14 text-muted-foreground opacity-25" />
           </div>
         )}
 
-        {/* Gradient overlay — only when image is visible */}
+        {/* Scrim gradient over image */}
         {showImage && (
           <div
-            className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent"
+            className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-card via-card/50 to-transparent"
             aria-hidden
           />
         )}
 
-        {/* Risk badge — top right */}
+        {/* Source pill — top-left of hero */}
+        {article.url && (
+          <div className="absolute top-3 left-3 z-10">
+            <a
+              href={article.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-background/80 backdrop-blur-sm rounded-full px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-background/95 transition-colors border border-border/30"
+              aria-label={`Read full article on ${article.publisher || "source"}`}
+            >
+              <ExternalLink className="h-2.5 w-2.5 shrink-0" aria-hidden />
+              {article.publisher || "Source"}
+            </a>
+          </div>
+        )}
+
+        {/* Category tag — bottom-left */}
+        <div className="absolute bottom-3 left-3">
+          <CategoryTag label={entityLabel} />
+        </div>
+
+        {/* Risk badge — top-right */}
         <div className="absolute top-3 right-3">
-          <Badge variant={riskVariant[story.risk_level] ?? "low"}>
-            <AlertTriangle className="h-3 w-3 mr-1" aria-hidden />
-            <span>{story.risk_level.toUpperCase()} RISK</span>
+          <Badge variant={riskVariant[story.risk_level] ?? "low"} className="text-[10px] font-semibold">
+            {story.risk_level.toUpperCase()} RISK
           </Badge>
         </div>
       </div>
 
-      {/* ── Content ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 p-5">
-        {/* Headline */}
-        <h1 className="text-xl font-bold leading-snug">{article.headline}</h1>
+      {/* ── Content area ──────────────────────────────────────────────── */}
+      <div className="flex flex-col flex-1 min-h-0 px-4 pt-3 pb-0 gap-2">
 
-        {/* Metadata row */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-          {/* Publisher name */}
+        {/* Headline */}
+        <h1 className="text-[17px] font-bold leading-tight line-clamp-3 text-foreground">
+          {article.headline}
+        </h1>
+
+        {/* Source row: publisher · time · article count · watchlist */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap shrink-0">
           {article.publisher && (
-            <span className="font-medium text-foreground shrink-0">
+            <span className="font-semibold text-foreground/80 truncate max-w-[120px]">
               {article.publisher}
             </span>
           )}
-
-          {/* Published time with absolute on hover */}
+          <span aria-hidden>·</span>
           <PublishedTime iso={article.published_at} />
-
-          {/* Article count */}
-          <span className="flex items-center gap-1 shrink-0">
-            <BookMarked className="h-3.5 w-3.5" aria-hidden />
-            {story.article_count} article{story.article_count === 1 ? "" : "s"}
-          </span>
-
-          {/* Sentiment — icon + text, not color-only */}
-          <SentimentBadge label={article.sentiment_label} />
-
-          {/* Source icon — 44px touch target, opens URL in new tab */}
-          <span className="ml-auto -my-2">
-            <SourceIcon
-              publisher={article.publisher}
-              url={article.url}
-            />
-          </span>
+          <span aria-hidden>·</span>
+          <span>{story.article_count} article{story.article_count === 1 ? "" : "s"}</span>
+          {primaryEntity && (
+            <span className="ml-auto shrink-0">
+              <WatchlistToggle
+                entityId={primaryEntity.id}
+                entityName={primaryEntity.canonical_name}
+              />
+            </span>
+          )}
         </div>
 
-        {/* Entity tags + watchlist toggle */}
-        {story.entities.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2" aria-label="Related entities">
-            {story.entities.map((entity) => (
-              <Badge key={entity.id} variant="secondary" className="text-xs">
-                {entity.canonical_name}
-                <span className="ml-1 opacity-50 font-normal capitalize">
-                  {entity.type}
-                </span>
-              </Badge>
-            ))}
-            {story.entities[0] && (
-              <WatchlistToggle
-                entityId={story.entities[0].id}
-                entityName={story.entities[0].canonical_name}
-                className="ml-auto"
-              />
-            )}
-          </div>
-        )}
-
-        {/* Story context — the story title gives broader context than the article headline */}
-        {story.title !== article.headline && (
-          <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-border pl-3">
-            {story.title}
+        {/* Article body preview — natural height, scrolls if long */}
+        <div className="overflow-y-auto max-h-[8rem]">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {bodyText}
           </p>
-        )}
+        </div>
+
+        {/* Engagement row — pinned to bottom */}
+        <div className="mt-auto shrink-0 border-t border-border/40 pt-1.5 pb-3">
+          <EngagementRow
+            onSave={() => saved ? unsaveStory(story.id) : saveStory(story)}
+            isSaved={saved}
+            articleUrl={article.url}
+            headline={article.headline}
+          />
+        </div>
       </div>
     </div>
   );

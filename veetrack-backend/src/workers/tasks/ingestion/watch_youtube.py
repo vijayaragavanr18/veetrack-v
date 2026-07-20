@@ -41,7 +41,8 @@ class YouTubeIngestionSettings(BaseSettings):
     )
 
     database_url: str = ""
-    youtube_calls_per_minute: int = 5
+    apidirect_api_key: str = ""
+    youtube_calls_per_minute: int = 10
 
 
 def _make_dedup_hash(external_id: str, source_id: str) -> str:
@@ -65,7 +66,7 @@ async def _run_pull(
         source_id,
         settings.youtube_calls_per_minute,
     )
-    client = YouTubeClient(source_id=source_id, rate_limiter=limiter)
+    client = YouTubeClient(source_id=source_id, rate_limiter=limiter, api_key=settings.apidirect_api_key)
 
     since = datetime.now(UTC) - timedelta(hours=_DEFAULT_LOOKBACK_HOURS)
     articles = await client.fetch(query, since)
@@ -84,6 +85,11 @@ async def _run_pull(
     window_start = now.replace(second=0, microsecond=0)
 
     async with factory() as session, session.begin():
+        from sqlalchemy import text as _text
+        await session.execute(
+            _text("INSERT INTO sources (id, type, config_json, is_active) VALUES (:id, 'youtube', '{}', true) ON CONFLICT (id) DO NOTHING"),
+            {"id": source_id},
+        )
         for article in articles:
             dedup_hash = _make_dedup_hash(article.external_id, source_id)
             result = await session.execute(

@@ -1,50 +1,30 @@
-"""YouTube client for the workers package — fully free, no API key required.
+"""YouTube client — powered by APIDIRECT MCP (search_youtube tool).
 
-Uses yt-dlp for video search (scrapes YouTube) and youtube-transcript-api
-for transcript retrieval.  Both are keyless and unlimited.
+APIDIRECT is an MCP server: POST https://apidirect.io/mcp?token=<key>
+with JSON-RPC 2.0. The search_youtube tool returns video metadata
+including title, snippet, thumbnail, channel, date, views.
 
-Rate limiting: conservative default of 5 calls/minute via RedisRateLimiter
-to avoid YouTube's bot-detection throttling.
+Falls back to yt-dlp + youtube-transcript-api if APIDIRECT key is missing.
 """
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 import structlog
 
 from workers.connectors.base import CircuitOpen, RateLimitExceeded, RedisRateLimiter
 
-try:
-    import yt_dlp  # type: ignore[import-untyped]
-except ImportError as _exc:
-    raise ImportError("yt-dlp required for YouTubeClient") from _exc
-
-try:
-    from youtube_transcript_api import (  # type: ignore[import-untyped]
-        CouldNotRetrieveTranscript,
-        NoTranscriptFound,
-        TranscriptsDisabled,
-        VideoUnavailable,
-        YouTubeTranscriptApi,
-    )
-except ImportError as _exc:
-    raise ImportError("youtube-transcript-api required for YouTubeClient") from _exc
-
 logger = structlog.get_logger(__name__)
 
 _PUBLISHER = "YouTube"
-_DEFAULT_CALLS_PER_MINUTE = 5
+_DEFAULT_CALLS_PER_MINUTE = 10
 _DEFAULT_MAX_RESULTS = 10
-
-_YDL_BASE_OPTS: dict[str, Any] = {
-    "quiet": True,
-    "no_warnings": True,
-    "extract_flat": True,
-    "skip_download": True,
-}
+_APIDIRECT_MCP_URL = "https://apidirect.io/mcp"
 
 
 @dataclass
@@ -60,97 +40,82 @@ class RawArticle:
     metadata_json: dict[str, object] = field(default_factory=dict)
 
 
-def _video_url(video_id: str) -> str:
-    return f"https://www.youtube.com/watch?v={video_id}"
-
-
-def _stable_external_id(video_id: str) -> str:
-    return f"yt:{video_id}"
-
-
-def _parse_upload_date(raw: str | None) -> datetime:
-    """Parse yt-dlp's upload_date 'YYYYMMDD' to UTC datetime."""
+def _parse_date(raw: str | None) -> datetime:
     if not raw:
         return datetime.now(UTC)
-    try:
-        return datetime.strptime(raw, "%Y%m%d").replace(tzinfo=UTC)
-    except ValueError:
-        return datetime.now(UTC)
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y%m%d"):
+        try:
+            return datetime.strptime(raw[:19], fmt).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return datetime.now(UTC)
 
 
-def _build_transcript_text(snippets: list[Any]) -> str:
-    return " ".join(s.text.strip() for s in snippets if s.text.strip())
+async def _search_apidirect(query: str, max_results: int, api_key: str) -> list[dict[str, Any]]:
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+            "name": "search_youtube",
+            "arguments": {"query": query, "max_results": max_results},
+        },
+    }
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        resp = await client.post(
+            f"{_APIDIRECT_MCP_URL}?token={api_key}",
+            json=payload,
+        )
+        resp.raise_for_status()
+    data = resp.json()
+    import json as _json
+    text = data.get("result", {}).get("content", [{}])[0].get("text", "{}")
+    parsed = _json.loads(text)
+    return parsed.get("posts", parsed.get("videos", []))
 
 
-def map_video_to_article(
-    video_id: str,
-    info: dict[str, Any],
-    transcript_text: str,
-    language: str,
-    is_generated: bool,
-) -> RawArticle:
-    title = str(info.get("title") or f"YouTube video {video_id}")
-    channel = str(info.get("channel") or info.get("uploader") or _PUBLISHER)
-    published_at = _parse_upload_date(info.get("upload_date"))
-    thumbnail: str | None = None
-    thumbs = info.get("thumbnails")
-    if isinstance(thumbs, list) and thumbs:
-        thumbnail = str(thumbs[-1].get("url", "")) or None
-    elif isinstance(info.get("thumbnail"), str):
-        thumbnail = info.get("thumbnail")
+def _map_post(post: dict[str, Any]) -> RawArticle:
+    video_id = post.get("video_id") or post.get("url", "").split("v=")[-1]
+    url = post.get("url") or f"https://youtube.com/watch?v={video_id}"
     return RawArticle(
-        external_id=_stable_external_id(video_id),
-        url=_video_url(video_id),
-        headline=title,
-        publisher=channel,
-        published_at=published_at,
-        raw_content=transcript_text,
-        language=language,
-        hero_image_url=thumbnail,
+        external_id=f"yt:{video_id}",
+        url=url,
+        headline=str(post.get("title") or ""),
+        publisher=str(post.get("author") or _PUBLISHER),
+        published_at=_parse_date(post.get("date")),
+        raw_content=str(post.get("snippet") or ""),
+        language="en",
+        hero_image_url=post.get("thumbnail"),
         metadata_json={
             "video_id": video_id,
-            "channel": channel,
-            "description": str(info.get("description") or ""),
-            "is_generated_transcript": is_generated,
-            "transcript_language": language,
+            "channel": post.get("author", ""),
+            "views": post.get("views", 0),
+            "video_length": post.get("video_length", ""),
+            "type": post.get("type", "NORMAL"),
         },
     )
 
 
-def _search_videos(query: str, max_results: int) -> list[dict[str, Any]]:
-    """Run yt-dlp search synchronously; return video info dicts."""
-    search_url = f"ytsearch{max_results}:{query}"
-    opts = {**_YDL_BASE_OPTS, "playlistend": max_results}
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        result = ydl.extract_info(search_url, download=False)
-    if result is None:
-        return []
-    entries: list[dict[str, Any]] = result.get("entries") or []
-    return [e for e in entries if e and e.get("id")]
-
-
 class YouTubeClient:
-    """Async-compatible YouTube client for Celery workers — no API key needed."""
+    """Async YouTube client for Celery workers — uses APIDIRECT MCP."""
 
     def __init__(
         self,
         source_id: str,
         rate_limiter: RedisRateLimiter,
         *,
-        transcript_api: Any | None = None,
-        search_fn: Any | None = None,
+        api_key: str = "",
         max_results: int = _DEFAULT_MAX_RESULTS,
     ) -> None:
         self._source_id = source_id
         self._limiter = rate_limiter
-        self._transcript_api = transcript_api or YouTubeTranscriptApi()
-        self._search_fn = search_fn or _search_videos
+        self._api_key = api_key
         self._max_results = max_results
 
     async def fetch(self, query: str, since: datetime) -> list[RawArticle]:
         await self._limiter.acquire()
         try:
-            articles = self._do_fetch(query, since)
+            articles = await self._do_fetch(query, since)
             await self._limiter.record_success()
             return articles
         except (CircuitOpen, RateLimitExceeded):
@@ -165,68 +130,54 @@ class YouTubeClient:
             )
             raise
 
-    def _do_fetch(self, query: str, since: datetime) -> list[RawArticle]:
-        try:
-            videos = self._search_fn(query, self._max_results)
-        except Exception as exc:
-            raise RuntimeError(f"yt-dlp search failed: {exc}") from exc
+    async def _do_fetch(self, query: str, since: datetime) -> list[RawArticle]:
+        if self._api_key:
+            posts = await _search_apidirect(query, self._max_results, self._api_key)
+        else:
+            posts = await self._ytdlp_fallback(query)
 
         articles: list[RawArticle] = []
-        skipped = 0
-
-        for info in videos:
-            video_id: str = info["id"]
-            if _parse_upload_date(info.get("upload_date")) < since:
+        for post in posts:
+            article = _map_post(post)
+            if article.published_at < since:
                 continue
-            article = self._fetch_transcript(video_id, info)
-            if article is not None:
-                articles.append(article)
-            else:
-                skipped += 1
+            if not article.headline:
+                continue
+            articles.append(article)
 
         logger.info(
             "connector.youtube.fetched",
             source_id=self._source_id,
             query=query,
-            total=len(videos),
+            total=len(posts),
             mapped=len(articles),
-            skipped_no_transcript=skipped,
         )
         return articles
 
-    def _fetch_transcript(self, video_id: str, info: dict[str, Any]) -> RawArticle | None:
+    async def _ytdlp_fallback(self, query: str) -> list[dict[str, Any]]:
+        """Fallback to yt-dlp when no APIDIRECT key."""
         try:
-            fetched = self._transcript_api.fetch(video_id, languages=["en", "en-US"])
-            transcript_text = _build_transcript_text(fetched.snippets)
-            if not transcript_text.strip():
-                return None
-            return map_video_to_article(
-                video_id=video_id,
-                info=info,
-                transcript_text=transcript_text,
-                language=fetched.language_code,
-                is_generated=fetched.is_generated,
-            )
-        except (TranscriptsDisabled, NoTranscriptFound, VideoUnavailable):
-            logger.info(
-                "connector.youtube.no_transcript",
-                source_id=self._source_id,
-                video_id=video_id,
-            )
-            return None
-        except CouldNotRetrieveTranscript as exc:
-            logger.warning(
-                "connector.youtube.transcript_error",
-                source_id=self._source_id,
-                video_id=video_id,
-                error=str(exc),
-            )
-            return None
-        except Exception as exc:
-            logger.warning(
-                "connector.youtube.transcript_unexpected_error",
-                source_id=self._source_id,
-                video_id=video_id,
-                error=str(exc),
-            )
-            return None
+            import yt_dlp  # type: ignore[import-untyped]
+        except ImportError:
+            return []
+
+        def _search() -> list[dict[str, Any]]:
+            opts = {"quiet": True, "no_warnings": True, "extract_flat": True, "skip_download": True}
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                result = ydl.extract_info(f"ytsearch{self._max_results}:{query}", download=False)
+            if not result:
+                return []
+            return [
+                {
+                    "video_id": e["id"],
+                    "url": f"https://www.youtube.com/watch?v={e['id']}",
+                    "title": e.get("title", ""),
+                    "author": e.get("channel") or e.get("uploader", ""),
+                    "date": e.get("upload_date", ""),
+                    "snippet": e.get("description", ""),
+                    "thumbnail": (e.get("thumbnails") or [{}])[-1].get("url"),
+                }
+                for e in (result.get("entries") or []) if e and e.get("id")
+            ]
+
+        return await asyncio.get_event_loop().run_in_executor(None, _search)

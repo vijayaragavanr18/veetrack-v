@@ -20,11 +20,14 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "picsum.photos",
+        hostname: "**",
         pathname: "/**",
       },
-      // MinIO/S3 hero image cache — add your bucket hostname here when live.
-      // { protocol: "https", hostname: "media.veetrack.io", pathname: "/heroes/**" },
+      {
+        protocol: "http",
+        hostname: "**",
+        pathname: "/**",
+      },
     ],
   },
 

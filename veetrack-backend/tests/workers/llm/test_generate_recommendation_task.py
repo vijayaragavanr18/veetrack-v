@@ -17,15 +17,14 @@ def test_settings_default_min_articles() -> None:
     assert s.llm_min_articles >= 3
 
 
-def test_settings_default_hosted_model() -> None:
+def test_settings_local_model_is_qwen() -> None:
     s = RecommendationSettings()
-    assert "claude" in s.llm_hosted_model.lower()
+    assert "qwen" in s.llm_local_model.lower()
 
 
-def test_settings_empty_api_key_by_default() -> None:
+def test_settings_local_endpoint_points_to_vllm() -> None:
     s = RecommendationSettings()
-    # api_key defaults to ""; task uses local tier (vLLM) when no hosted key is set
-    assert isinstance(s.anthropic_api_key, str)
+    assert "8080" in s.llm_local_endpoint or "localhost" in s.llm_local_endpoint
 
 
 def test_settings_threshold_configurable(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -43,6 +43,9 @@ class EntitySettings(BaseSettings):
 
     database_url: str = ""
     gliner_model_id: str = _DEFAULT_MODEL
+    # Force CPU so GLiNER doesn't compete with vLLM for GPU memory.
+    # Set GLINER_DEVICE=cuda to use GPU only when vLLM is not running.
+    gliner_device: str = "cpu"
 
 
 # Module-level GLiNER model singleton (loaded once per worker process)
@@ -50,13 +53,11 @@ _gliner_model: Any = None
 _gliner_model_id: str = ""
 
 
-def _get_gliner(model_id: str) -> Any:
+def _get_gliner(model_id: str, device: str = "cpu") -> Any:
     global _gliner_model, _gliner_model_id
     if _gliner_model is None or _gliner_model_id != model_id:
-        import torch
         from gliner import GLiNER  # type: ignore[import-untyped]
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info("extract_entities.loading_gliner", model_id=model_id, device=device)
         _gliner_model = GLiNER.from_pretrained(model_id, map_location=device)
         _gliner_model.eval()
@@ -166,7 +167,7 @@ async def _resolve_mention(
     await session.execute(
         text(
             "INSERT INTO entities (id, canonical_name, type, metadata_json) "
-            "VALUES (:id, :name, :type, :meta::jsonb)"
+            "VALUES (:id, :name, :type, CAST(:meta AS jsonb))"
         ),
         {"id": entity_id, "name": surface, "type": entity_type, "meta": "{}"},
     )
@@ -186,7 +187,9 @@ async def _resolve_mention(
     return entity_id
 
 
-async def _run_extract(article_id: str, database_url: str, model_id: str) -> dict[str, Any]:
+async def _run_extract(
+    article_id: str, database_url: str, model_id: str, device: str = "cpu"
+) -> dict[str, Any]:
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -212,7 +215,7 @@ async def _run_extract(article_id: str, database_url: str, model_id: str) -> dic
             return {"status": "skipped_empty"}
 
         # Run GLiNER inference (CPU/GPU, sync — run in thread if needed)
-        model = _get_gliner(model_id)
+        model = _get_gliner(model_id, device)
         raw_mentions: list[dict[str, Any]] = model.predict_entities(
             clean_content[:4096],  # cap at 4 096 chars to stay within model token budget
             _NER_LABELS,
@@ -280,7 +283,12 @@ def run(self: object, *, article_id: str) -> dict[str, Any]:  # type: ignore[mis
 
     try:
         return asyncio.run(
-            _run_extract(article_id, settings.database_url, settings.gliner_model_id)
+            _run_extract(
+                article_id,
+                settings.database_url,
+                settings.gliner_model_id,
+                settings.gliner_device,
+            )
         )
     except Exception as exc:
         logger.error("extract_entities.failed", article_id=article_id, error=str(exc))

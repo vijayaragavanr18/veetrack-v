@@ -74,6 +74,15 @@ async def _run_track(keyword: str, settings: TrackSettings) -> dict[str, Any]:
                 )
                 logger.info("track_new_entity.created", keyword=keyword, entity_id=entity_id)
 
+        # Store keyword in Redis tracked set so Beat picks it up for periodic refresh
+        from redis.asyncio import Redis
+
+        redis_client: Redis = Redis.from_url(settings.redis_url, decode_responses=False)
+        try:
+            await redis_client.sadd(b"vt:tracked_keywords", keyword.lower().encode())
+        finally:
+            await redis_client.aclose()
+
         # 2. Trigger connector pulls
         from workers.tasks.ingestion.watch_newsdata import run as newsdata_run
 

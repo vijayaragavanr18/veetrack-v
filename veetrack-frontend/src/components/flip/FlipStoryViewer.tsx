@@ -113,7 +113,7 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
     const story = stories[currentStoryIndex];
     if (!story) return null;
     return (
-      <div className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] flex flex-col rounded-lg border border-border bg-card overflow-hidden">
+      <div className="flex-1 flex flex-col bg-card overflow-hidden">
         <PageDots currentPage={currentPage} onPageClick={goToPage} />
         <div className="flex-1 overflow-y-auto">
           <PageContent story={story} page={currentPage} />
@@ -123,11 +123,19 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
   }
 
   if (isLoading) {
-    return <div className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] rounded-lg border border-border bg-card animate-pulse" />;
+    return <div className="flex-1 bg-card animate-pulse" />;
   }
 
   const story = stories[currentStoryIndex];
-  if (!story) return null;
+  if (!story) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
+        <p className="text-2xl">🔍</p>
+        <p className="text-base font-medium text-foreground">No stories found</p>
+        <p className="text-sm text-muted-foreground">Try searching for a different topic, company, or person.</p>
+      </div>
+    );
+  }
 
   const dir = gesture.direction.current;
   const lockedAxis = gesture.axis.current;
@@ -183,7 +191,7 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
   return (
     <div
       ref={containerRef}
-      className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] relative rounded-lg border border-border overflow-hidden select-none cursor-grab active:cursor-grabbing"
+      className="flex-1 relative overflow-hidden select-none cursor-grab active:cursor-grabbing bg-card"
       style={{ touchAction: "none" }}
       data-testid="story-viewport"
       {...gesture.pointerHandlers}

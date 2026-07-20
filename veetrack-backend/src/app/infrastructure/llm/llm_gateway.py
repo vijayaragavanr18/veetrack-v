@@ -57,14 +57,13 @@ class RoutingLLMGateway:
     def __init__(
         self,
         local_client: LLMGateway,
-        hosted_client: LLMGateway,
+        hosted_client: LLMGateway | None = None,
         redis: Any = None,
-        default_tier: ModelTier = "hosted",
+        default_tier: ModelTier = "local",
     ) -> None:
-        self._clients: dict[ModelTier, LLMGateway] = {
-            "local": local_client,
-            "hosted": hosted_client,
-        }
+        self._clients: dict[ModelTier, LLMGateway] = {"local": local_client}
+        if hosted_client is not None:
+            self._clients["hosted"] = hosted_client
         self._redis = redis
         self._default_tier = default_tier
 

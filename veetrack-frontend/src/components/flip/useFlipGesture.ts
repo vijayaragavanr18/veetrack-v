@@ -184,8 +184,8 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
     }
   }, [finishGesture, progress]);
 
-  const onPointerCancel = useCallback((e: React.PointerEvent) => {
-    onPointerUp(e);
+  const onPointerCancel = useCallback(() => {
+    onPointerUp();
   }, [onPointerUp]);
 
   return {

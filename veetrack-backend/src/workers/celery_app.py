@@ -49,6 +49,8 @@ app = Celery(
         "workers.tasks.exports.scheduled_digest",
         "workers.tasks.search",
         "workers.tasks.system.ping",
+        "workers.tasks.system.purge_old_articles",
+        "workers.tasks.search.refresh_tracked_keywords",
     ],
 )
 
@@ -68,73 +70,74 @@ app.conf.update(
     worker_prefetch_multiplier=1,  # one task at a time per worker process (fair dispatch)
     # Queue routing
     task_routes={
-        "workers.tasks.ingestion.*": {"queue": "ingestion"},
-        "workers.tasks.nlp.*": {"queue": "nlp"},
-        "workers.tasks.llm.*": {"queue": "llm"},
-        "workers.tasks.alerts.*": {"queue": "alerts"},
-        "workers.tasks.exports.*": {"queue": "llm"},
-        "workers.tasks.search.*": {"queue": "ingestion"},
-        "workers.tasks.system.*": {"queue": "ingestion"},  # system tasks share the ingestion queue
+        "tasks.ingestion.*": {"queue": "ingestion"},
+        "tasks.nlp.*": {"queue": "nlp"},
+        "tasks.llm.*": {"queue": "llm"},
+        "tasks.alerts.*": {"queue": "alerts"},
+        "tasks.exports.*": {"queue": "llm"},
+        "tasks.search.*": {"queue": "ingestion"},
+        "tasks.system.*": {"queue": "ingestion"},
+        "tasks.search.refresh_tracked_keywords.*": {"queue": "ingestion"},
+        "tasks.system.purge_old_articles.*": {"queue": "ingestion"},
     },
     task_default_queue="ingestion",
     # Beat schedule stubs — implementations added per phase
     beat_schedule={
-        "daily-digest-example": {
-            # Per-workspace digest; kwargs populated via admin API or env config.
-            # This entry serves as the template — real workspaces add their own entries.
-            "task": "workers.tasks.exports.scheduled_digest",
-            "schedule": crontab(hour=7, minute=0),  # 07:00 UTC daily
-            "kwargs": {
-                "workspace_id": "default",
-                "entity_keyword": "Tesla",
-                "recipient_emails": [],  # populated at runtime
-                "window_days": 1,
-                "format": "pdf",
-            },
-            "options": {"queue": "llm"},
-            "enabled": False,  # off by default; enable per workspace
-        },
+        # daily-digest-example: disabled — enable per workspace via admin API
         "nightly-recluster": {
-            "task": "workers.tasks.nlp.clustering.full_recluster",  # Phase 15
+            "task": "tasks.nlp.clustering.full_recluster",
             "schedule": crontab(hour=0, minute=30),
             "options": {"queue": "nlp"},
         },
         "newsdata-pull-every-15min": {
-            "task": "workers.tasks.ingestion.watch_newsdata.run",
+            "task": "tasks.ingestion.watch_newsdata.run",
             "schedule": crontab(minute="*/15"),
             "kwargs": {
                 "source_id": "newsdata-default",
-                "query": "Tesla OR Apple OR Microsoft",
+                "query": "Tesla OR Apple OR Microsoft OR AI OR Technology",
             },
             "options": {"queue": "ingestion"},
         },
         "twitter-pull-every-15min": {
-            "task": "workers.tasks.ingestion.watch_twitter.run",
+            "task": "tasks.ingestion.watch_twitter.run",
             "schedule": crontab(minute="*/15"),
             "kwargs": {
                 "source_id": "twitter-default",
-                "query": "Tesla OR Apple OR Microsoft",
+                "query": "Tesla OR Apple OR Microsoft OR AI OR Technology",
             },
             "options": {"queue": "ingestion"},
         },
         "rss-pull-every-15min": {
-            "task": "workers.tasks.ingestion.watch_rss.run",
+            "task": "tasks.ingestion.watch_rss.run",
             "schedule": crontab(minute="*/15"),
             "kwargs": {
                 "source_id": "rss-default",
-                "feed_urls": [],  # populated via admin API at runtime
+                "feed_urls": [
+                    "https://feeds.bbci.co.uk/news/technology/rss.xml",
+                    "https://feeds.feedburner.com/TechCrunch",
+                    "https://www.theverge.com/rss/index.xml",
+                    "https://www.wired.com/feed/rss",
+                ],
             },
             "options": {"queue": "ingestion"},
         },
         "youtube-pull-every-6h": {
-            # Conservative: YouTube Data API has a very low daily unit quota.
-            # 4 pulls/day × 10 results × 100 units/call = 4 000 units/day (well within 10 000).
-            "task": "workers.tasks.ingestion.watch_youtube.run",
+            "task": "tasks.ingestion.watch_youtube.run",
             "schedule": crontab(minute=0, hour="*/6"),
             "kwargs": {
                 "source_id": "youtube-default",
-                "query": "Tesla OR Apple OR Microsoft",
+                "query": "Tesla OR Apple OR Microsoft OR AI OR Technology",
             },
+            "options": {"queue": "ingestion"},
+        },
+        "purge-old-articles-hourly": {
+            "task": "tasks.system.purge_old_articles.run",
+            "schedule": crontab(minute=0),  # every hour on the hour
+            "options": {"queue": "ingestion"},
+        },
+        "refresh-tracked-keywords-30min": {
+            "task": "tasks.search.refresh_tracked_keywords.run",
+            "schedule": crontab(minute="*/30"),
             "options": {"queue": "ingestion"},
         },
     },

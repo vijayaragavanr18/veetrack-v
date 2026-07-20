@@ -15,6 +15,7 @@ interface FeedActions {
   prevPage: () => void;
   goToPage: (page: 1 | 2 | 3 | 4) => void;
   goToStory: (index: number) => void;
+  resetFeed: () => void;
 }
 
 export const useFeedStore = create<FeedState & FeedActions>()(
@@ -65,6 +66,9 @@ export const useFeedStore = create<FeedState & FeedActions>()(
 
       goToStory: (index: number) =>
         set({ currentStoryIndex: index, currentPage: 1 }, false, "goToStory"),
+
+      resetFeed: () =>
+        set({ currentStoryIndex: 0, currentPage: 1 }, false, "resetFeed"),
     }),
     { name: "FeedStore" }
   )

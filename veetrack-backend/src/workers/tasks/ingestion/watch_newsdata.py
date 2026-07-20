@@ -26,8 +26,8 @@ from workers.connectors.newsdata import NewsDataClient
 
 logger = structlog.get_logger(__name__)
 
-# How far back to look on the first pull (no prior window recorded).
-_DEFAULT_LOOKBACK_HOURS = 24
+# Only show articles from the last 48 hours (AI social media platform — recency is key).
+_DEFAULT_LOOKBACK_HOURS = 48
 
 
 class IngestionSettings(BaseSettings):
@@ -85,9 +85,16 @@ async def _run_pull(
     async with factory() as session, session.begin():
         from sqlalchemy import text
 
-        # Import models inline so Celery doesn't need to resolve the full app layer
+        # Ensure source row exists (articles has FK → sources)
+        await session.execute(
+            text("""
+                INSERT INTO sources (id, type, config_json, is_active)
+                VALUES (:id, 'newsdata', '{}', true)
+                ON CONFLICT (id) DO NOTHING
+            """),
+            {"id": source_id},
+        )
 
-        # Resolve article table via raw SQL to avoid importing API models
         for article in articles:
             dedup_hash = _make_dedup_hash(article.external_id, source_id)
             # Check for existing article

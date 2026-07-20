@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import v1_router
 from app.core.config import get_settings
@@ -41,6 +42,20 @@ def create_app() -> FastAPI:
         description="AI-powered media intelligence platform",
         docs_url="/docs" if settings.environment != "production" else None,
         redoc_url="/redoc" if settings.environment != "production" else None,
+    )
+
+    # CORS — allow frontend dev server + Vercel + ngrok tunnel origins
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3000",
+        ],
+        allow_origin_regex=r"https://(.*\.vercel\.app|.*\.ngrok-free\.app|.*\.ngrok\.io)",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Middleware — outermost first (RequestID must precede logging so request_id is bound)

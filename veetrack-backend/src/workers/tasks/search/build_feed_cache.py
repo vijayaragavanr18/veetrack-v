@@ -69,7 +69,7 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
                 return 0
             entity_name = str(ent_result[0])
 
-            # 2. Active stories for this entity, newest first
+            # 2. Active stories for this entity within last 48h, newest first
             story_rows = await session.execute(
                 text(
                     "SELECT s.id, s.title, s.status, s.risk_level, s.updated_at, "
@@ -77,6 +77,7 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
                     "FROM stories s "
                     "LEFT JOIN story_articles sa ON sa.story_id = s.id "
                     "WHERE s.primary_entity_id = :eid AND s.status = 'active' "
+                    "  AND s.updated_at >= NOW() - INTERVAL '48 hours' "
                     "GROUP BY s.id "
                     "ORDER BY s.updated_at DESC "
                     "LIMIT :lim"
@@ -93,7 +94,8 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
             art_rows = await session.execute(
                 text(
                     "SELECT a.id, a.headline, a.publisher, a.published_at, "
-                    "       a.sentiment_label, sa.story_id "
+                    "       a.sentiment_label, a.hero_image_url, a.url, sa.story_id, "
+                    "       LEFT(COALESCE(NULLIF(a.clean_content,''), NULLIF(a.raw_content,''), ''), 300) AS content_preview "
                     "FROM articles a "
                     "JOIN story_articles sa ON sa.article_id = a.id "
                     "WHERE sa.story_id = ANY(:sids) "
@@ -112,6 +114,9 @@ async def _build_payload(entity_id: str, settings: CacheSettings) -> int:
                             "publisher": ar.publisher or "",
                             "published_at": ar.published_at.isoformat() if ar.published_at else "",
                             "sentiment_label": ar.sentiment_label or "neutral",
+                            "hero_image_url": ar.hero_image_url,
+                            "url": ar.url or "",
+                            "content_preview": getattr(ar, "content_preview", "") or "",
                         }
                     )
 

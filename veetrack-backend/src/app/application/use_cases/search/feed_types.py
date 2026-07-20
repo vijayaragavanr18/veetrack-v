@@ -52,6 +52,9 @@ class ArticleSummaryItem:
     publisher: str
     published_at: str
     sentiment_label: str
+    hero_image_url: str | None = None
+    url: str = ""
+    content_preview: str = ""
 
 
 @dataclass

@@ -1,17 +1,8 @@
 "use client";
 
-/**
- * TanStack Query infinite-query hook for the feed.
- *
- * Falls back to MOCK_STORIES when the API is unavailable (no access token or
- * network error), so the UI keeps working during local development without a
- * running backend.
- */
-
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
-import { MOCK_STORIES } from "@/lib/mock-data";
-import { fetchFeed, adaptApiStory } from "@/features/feed/api/feedApi";
+import { fetchFeed, fetchFeedDirect, adaptApiStory } from "@/features/feed/api/feedApi";
 import type { MockStory } from "@/types";
 import type { FeedResponse } from "@/features/feed/api/feedApi";
 
@@ -22,7 +13,6 @@ export interface UseFeedQueryResult {
   isFetchingNextPage: boolean;
   hasNextPage: boolean;
   fetchNextPage: () => void;
-  /** "fast" | "cold" — from the last successful page response */
   path: "fast" | "cold" | null;
   usingMockData: boolean;
 }
@@ -30,37 +20,33 @@ export interface UseFeedQueryResult {
 export function useFeedQuery(entity: string): UseFeedQueryResult {
   const accessToken = useAuthStore((s) => s.accessToken);
 
+  // Try authed fetch; fall back to direct (no-auth) fetch for dev convenience
   const query = useInfiniteQuery<FeedResponse, Error>({
     queryKey: ["feed", entity],
     queryFn: async ({ pageParam }) => {
-      if (!accessToken) throw new Error("no_token");
-      return fetchFeed({
-        entity,
-        cursor: (pageParam as string | null) ?? null,
-        accessToken,
-      });
+      const cursor = (pageParam as string | null) ?? null;
+      if (accessToken) {
+        return fetchFeed({ entity, cursor, accessToken });
+      }
+      return fetchFeedDirect(entity, cursor);
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    // Keep stale data visible while refetching
-    staleTime: 60_000,
+    staleTime: 30_000,
     retry: 1,
-    enabled: !!accessToken,
+    enabled: entity.length > 0,
   });
 
-  const noToken = !accessToken;
-  const apiError = query.isError || noToken;
-
-  if (apiError) {
+  if (query.isError) {
     return {
-      stories: MOCK_STORIES,
+      stories: [],
       isLoading: false,
-      isError: false,
+      isError: true,
       isFetchingNextPage: false,
       hasNextPage: false,
       fetchNextPage: () => {},
       path: null,
-      usingMockData: true,
+      usingMockData: false,
     };
   }
 
@@ -69,13 +55,13 @@ export function useFeedQuery(entity: string): UseFeedQueryResult {
   const lastPage = pages[pages.length - 1];
 
   return {
-    stories: stories.length > 0 ? stories : MOCK_STORIES,
+    stories,
     isLoading: query.isLoading,
     isError: query.isError,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,
     fetchNextPage: () => void query.fetchNextPage(),
     path: lastPage?.path ?? null,
-    usingMockData: stories.length === 0,
+    usingMockData: false,
   };
 }
