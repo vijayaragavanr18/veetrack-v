@@ -12,9 +12,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web:
-    name: Web — lint, typecheck, test
+  frontend:
+    name: Frontend — lint, typecheck, test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: veetrack-frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -28,22 +31,23 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+        working-directory: .
 
       - name: Lint
-        run: pnpm --filter web lint
+        run: pnpm lint
 
       - name: Typecheck
-        run: pnpm --filter web typecheck
+        run: pnpm typecheck
 
       - name: Test
-        run: pnpm --filter web test
+        run: pnpm test
 
-  api:
-    name: API — ruff, mypy, unit tests
+  backend:
+    name: Backend — ruff, mypy, unit tests
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: veetrack-backend
     steps:
       - uses: actions/checkout@v4
 
@@ -64,21 +68,21 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Mypy
-        run: uv run mypy app/
+        run: uv run mypy src/app/
 
       - name: Unit tests (no infrastructure required)
-        run: uv run pytest tests/unit/ -m "not integration" -q
+        run: uv run pytest tests/unit/ tests/workers/ -m "not integration" -q
         env:
           DATABASE_URL: postgresql+asyncpg://veetrack:test@localhost:5432/veetrack
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET: test-secret-for-ci-only-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-  api-integration:
-    name: API — integration tests (Postgres + Redis)
+  backend-integration:
+    name: Backend — integration tests (Postgres + Redis)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: veetrack-backend
 
     services:
       postgres:
@@ -132,37 +136,10 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           JWT_SECRET: test-secret-for-ci-only-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-  workers:
-    name: Workers — ruff, mypy
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/workers
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Ruff lint
-        run: uv run ruff check .
-
-      - name: Mypy
-        run: uv run mypy .
-        env:
-          REDIS_URL: redis://localhost:6379/0
-
   e2e:
     name: E2E — Playwright
     runs-on: ubuntu-latest
-    needs: [web]
+    needs: [frontend]
     steps:
       - uses: actions/checkout@v4
 
@@ -187,7 +164,7 @@ jobs:
         working-directory: e2e
 
       - name: Start Next.js dev server
-        run: pnpm --filter web dev &
+        run: pnpm --filter veetrack-frontend dev &
         env:
           NEXT_TELEMETRY_DISABLED: "1"
 
@@ -213,7 +190,7 @@ jobs:
   build-images:
     name: Docker — build all images
     runs-on: ubuntu-latest
-    needs: [api, workers, web]
+    needs: [backend, frontend]
     # Only run on pushes to main (not on every PR to save CI minutes)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -225,8 +202,8 @@ jobs:
       - name: Build API image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: infra/docker/api.Dockerfile
+          context: ./veetrack-backend
+          file: ./veetrack-backend/Dockerfile.api
           push: false
           tags: veetrack-api:ci
           cache-from: type=gha
@@ -235,8 +212,8 @@ jobs:
       - name: Build workers image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: infra/docker/workers.Dockerfile
+          context: ./veetrack-backend
+          file: ./veetrack-backend/Dockerfile.workers
           push: false
           tags: veetrack-worker:ci
           cache-from: type=gha
@@ -245,8 +222,8 @@ jobs:
       - name: Build workers beat image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: infra/docker/workers.beat.Dockerfile
+          context: ./veetrack-backend
+          file: ./veetrack-backend/Dockerfile.workers.beat
           push: false
           tags: veetrack-worker-beat:ci
           cache-from: type=gha
@@ -255,8 +232,8 @@ jobs:
       - name: Build web image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: infra/docker/web.Dockerfile
+          context: ./veetrack-frontend
+          file: ./veetrack-frontend/Dockerfile
           push: false
           tags: veetrack-web:ci
           cache-from: type=gha

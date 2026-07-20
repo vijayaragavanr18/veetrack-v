@@ -64,8 +64,8 @@ services:
 
   api:
     build:
-      context: ..
-      dockerfile: infra/docker/api.Dockerfile
+      context: ../veetrack-backend
+      dockerfile: Dockerfile.api
     image: veetrack-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -98,8 +98,8 @@ services:
 
   worker:
     build:
-      context: ..
-      dockerfile: infra/docker/workers.Dockerfile
+      context: ../veetrack-backend
+      dockerfile: Dockerfile.workers
     image: veetrack-worker:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -124,8 +124,8 @@ services:
 
   beat:
     build:
-      context: ..
-      dockerfile: infra/docker/workers.beat.Dockerfile
+      context: ../veetrack-backend
+      dockerfile: Dockerfile.workers.beat
     image: veetrack-beat:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # Beat MUST run as a single replica — multiple beat instances cause
@@ -143,8 +143,8 @@ services:
 
   web:
     build:
-      context: ..
-      dockerfile: infra/docker/web.Dockerfile
+      context: ../veetrack-frontend
+      dockerfile: Dockerfile
     image: veetrack-web:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
