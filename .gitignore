@@ -40,3 +40,12 @@ out/
 
 # Docker
 *.log
+
+# Local Claude settings
+.claude/settings.local.json
+
+# Generated runtime state
+apps/workers/celerybeat-schedule
+
+# Kubernetes secrets
+infra/k8s/secrets.yaml
