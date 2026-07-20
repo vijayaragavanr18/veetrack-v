@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: veetrack
+  namespace: veetrack
+  labels:
+    app.kubernetes.io/part-of: veetrack
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # TLS certificate management — requires cert-manager installed in cluster
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # WebSocket connections need a long read timeout
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Increase body size for file uploads
+    nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+    # HSTS
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - veetrack.example.com   # Replace with your domain
+      secretName: veetrack-tls
+  rules:
+    - host: veetrack.example.com   # Replace with your domain
+      http:
+        paths:
+          # API routes — prefix match, strip nothing (FastAPI handles /api/v1/*)
+          - path: /api/
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          # WebSocket routes — long timeout annotation applied above
+          - path: /ws/
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+          # Everything else → Next.js frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 3000

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VeeTrack — Half-Bend Flip Demo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+  :root{ --dark:#1F2430; --slate:#44546A; --iceblue:#CADCFC; --offwhite:#F7F8FC; }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 20% 20%, #26307a 0%, #141B49 55%, #0c1030 100%);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:40px 16px; gap:20px; -webkit-user-select:none; user-select:none;
+  }
+  .brandrow{display:flex;align-items:center;gap:10px;color:#fff;}
+  .brandrow h1{font-size:22px;font-weight:700;margin:0;letter-spacing:1px;}
+  .brandrow span{font-size:13px;color:var(--iceblue);}
+  .phone{width:340px; background:#0c1030; border-radius:46px; padding:14px; box-shadow:0 30px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06) inset;}
+  .notch{width:120px; height:22px; background:#0c1030; border-radius:0 0 16px 16px; margin:0 auto -22px; position:relative; z-index:9;}
+  .screen{position:relative; width:312px; height:600px; border-radius:32px; overflow:hidden; background:var(--offwhite); box-shadow:0 0 0 2px #000; touch-action:none; cursor:grab; perspective:1700px;}
+  .screen:active{cursor:grabbing;}
+  .cardWrap{position:absolute; inset:0; transform-style:preserve-3d;}
+  .zone{position:absolute; left:0; right:0; height:300px; overflow:hidden;}
+  .zoneTop{top:0;}
+  .zoneBottom{top:300px;}
+  .flap{position:absolute; inset:0; overflow:hidden; background:var(--offwhite);}
+  .flapFront{backface-visibility:hidden; will-change:transform,filter;}
+  .zoneTop .flapFront{transform-origin:center bottom;}
+  .zoneBottom .flapFront{transform-origin:center top;}
+  .crease{position:absolute; top:299px; left:0; right:0; height:2px; background:rgba(0,0,0,0.18); z-index:6; pointer-events:none;}
+  .hBack{position:absolute; inset:0; display:none; z-index:0; background:var(--offwhite);}
+  .dots{position:absolute; bottom:14px; left:0; right:0; z-index:8; display:flex; justify-content:center; gap:6px; pointer-events:none;}
+  .dot{height:6px; border-radius:3px; background:rgba(0,0,0,0.18); transition:width .15s,background .15s;}
+  .dot.active{background:#1E2761;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:16px 18px 8px;}
+  .topbar .src{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--slate);}
+  .badge{font-size:11.5px; padding:4px 11px; border-radius:20px; font-weight:600;}
+  .badge.pos{background:#E1F5EE; color:#0F6E56;}
+  .badge.neu{background:#E6F1FB; color:#185FA5;}
+  .badge.neg{background:#FCEBEB; color:#A32D2D;}
+  .hero{height:230px; margin:6px 18px 0; border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#fff; font-size:40px; background:linear-gradient(135deg,#1E2761,#3B4BA0);}
+  .headline{padding:16px 18px 4px; font-size:20px; font-weight:700; line-height:1.35; color:var(--dark);}
+  .hint{padding:0 18px; font-size:12.5px; color:var(--slate);}
+  .insight{padding:20px 18px; height:100%; background:#E6F1FB; display:flex; flex-direction:column; gap:18px;}
+  .cluster{padding:20px 18px; height:100%; background:#EAF3DE; overflow:hidden;}
+  .actions{padding:20px 18px; height:100%; background:#FAEEDA; display:flex; flex-direction:column; gap:16px;}
+  .tag{font-size:11.5px; font-weight:700; letter-spacing:0.4px; text-transform:uppercase;}
+  .kicker-blue{color:#185FA5;} .kicker-green{color:#3B6D11;} .kicker-amber{color:#854F0B;}
+  .bigtext{font-size:15px; line-height:1.6; color:var(--dark); margin:0;}
+  .clusterrow{display:flex; gap:10px; padding:10px 0; border-top:1px solid rgba(0,0,0,0.08);}
+  .clusterrow p{margin:0;}
+  .statgrid{display:flex; gap:10px; margin-top:auto;}
+  .statcard{flex:1; background:#fff; border-radius:12px; padding:12px;}
+  .statcard .lbl{font-size:11px; color:#8a8a8a; margin:0 0 3px;}
+  .statcard .val{font-size:17px; font-weight:700; margin:0; color:var(--dark);}
+  .controls{display:flex; align-items:center; justify-content:space-between; width:340px;}
+  .ctrlgroup{display:flex; gap:8px;}
+  button.ctrl{width:42px; height:42px; border-radius:50%; border:none; cursor:pointer; background:rgba(255,255,255,0.1); color:#fff; font-size:18px; display:flex; align-items:center; justify-content:center; transition:background .15s, transform .1s;}
+  button.ctrl:hover{background:rgba(255,255,255,0.2);}
+  button.ctrl:active{transform:scale(0.92);}
+  .hintline{font-size:12px; color:var(--iceblue); text-align:center; max-width:340px;}
+  .storylabel{font-size:11.5px; color:var(--iceblue); text-align:center;}
+</style>
+</head>
+<body>
+
+  <div class="brandrow">
+    <i class="ti ti-bolt" style="font-size:24px;color:#F2B134;"></i>
+    <h1>VEETRACK</h1>
+    <span>&mdash; half-bend flip demo</span>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen" id="screen">
+      <div class="hBack" id="hBack"></div>
+      <div class="cardWrap" id="cardWrap">
+        <div class="zone zoneTop">
+          <div class="flap flapBack" id="topBack"></div>
+          <div class="flap flapFront" id="topFront"></div>
+        </div>
+        <div class="zone zoneBottom">
+          <div class="flap flapBack" id="bottomBack"></div>
+          <div class="flap flapFront" id="bottomFront"></div>
+        </div>
+        <div class="crease"></div>
+      </div>
+      <div class="dots" id="dots"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrlgroup">
+      <button class="ctrl" id="pgL" aria-label="Previous page"><i class="ti ti-chevron-left"></i></button>
+      <button class="ctrl" id="pgR" aria-label="Next page"><i class="ti ti-chevron-right"></i></button>
+    </div>
+    <div class="ctrlgroup">
+      <button class="ctrl" id="stU" aria-label="Previous story"><i class="ti ti-chevron-up"></i></button>
+      <button class="ctrl" id="stD" aria-label="Next story"><i class="ti ti-chevron-down"></i></button>
+    </div>
+  </div>
+  <p class="hintline">Drag up/down slowly &mdash; watch the top half peel back, then the bottom half fold in, around the center crease. Left/right flips the story's 4 pages.</p>
+  <p class="storylabel" id="storylabel"></p>
+
+<script>
+const SCREEN_H = 600, HALF = 300;
+
+const stories = [
+  {
+    name: "Tesla", source: "Reuters", time: "2h ago", icon: "ti-news",
+    headline: "Tesla shares climb after record quarterly delivery numbers",
+    sentiment: "Positive", sentClass: "pos",
+    what: "Tesla delivered a record number of vehicles this quarter, beating analyst estimates by a wide margin.",
+    why: "Stronger demand in Asian markets and the ramp-up of the new lower-cost model line drove the surprise beat.",
+    cluster: [["Reuters","Record deliveries reported"],["Bloomberg","Analysts raise price targets"],["X","Investor reaction trends positive"],["YouTube","Earnings call breakdown"]],
+    action: "Consider a short investor update highlighting the delivery beat before market open tomorrow.",
+    risk: "Low", conf: "92%"
+  },
+  {
+    name: "OpenAI", source: "TechCrunch", time: "40m ago", icon: "ti-news",
+    headline: "OpenAI announces new enterprise pricing tier",
+    sentiment: "Neutral", sentClass: "neu",
+    what: "OpenAI introduced a new pricing tier aimed at mid-sized enterprise customers, sitting between existing plans.",
+    why: "Increased competition from other model providers is pushing vendors to offer more flexible enterprise packaging.",
+    cluster: [["TechCrunch","Pricing tier announced"],["X","Mixed developer reaction"],["RSS","Partner blog explainer"],["YouTube","Product walkthrough"]],
+    action: "Marketing should compare this tier against our own offering within the next week.",
+    risk: "Medium", conf: "78%"
+  },
+  {
+    name: "Apple", source: "Bloomberg", time: "5h ago", icon: "ti-news",
+    headline: "Apple supplier flags possible component shortage",
+    sentiment: "Negative", sentClass: "neg",
+    what: "A key Apple component supplier warned of a possible shortage heading into the holiday quarter.",
+    why: "Unexpected demand for the component elsewhere in the industry has strained the supplier's capacity.",
+    cluster: [["Bloomberg","Supplier warning issued"],["Reuters","Analyst downgrade risk"],["X","Supply chain speculation"],["RSS","Component industry newsletter"]],
+    action: "Executives may want to monitor for any statement from Apple before the next earnings call.",
+    risk: "Medium", conf: "65%"
+  }
+];
+
+const pages = ["original","insight","cluster","actions"];
+let si = 0, pi = 0;
+
+const screenEl = document.getElementById("screen");
+const cardWrap = document.getElementById("cardWrap");
+const hBack = document.getElementById("hBack");
+const topFrontEl = document.getElementById("topFront");
+const topBackEl = document.getElementById("topBack");
+const bottomFrontEl = document.getElementById("bottomFront");
+const bottomBackEl = document.getElementById("bottomBack");
+const dotsEl = document.getElementById("dots");
+const label = document.getElementById("storylabel");
+
+function pageBlock(story, page){
+  if(page === "original"){
+    return "<div class=\"topbar\"><div class=\"src\"><i class=\"ti " + story.icon + "\"></i>" + story.source + " &middot; " + story.time + "</div><span class=\"badge " + story.sentClass + "\">" + story.sentiment + "</span></div>" +
+      "<div class=\"hero\"><i class=\"ti ti-photo\"></i></div>" +
+      "<p class=\"headline\">" + story.headline + "</p>" +
+      "<p class=\"hint\">Tap the source icon to open the original article.</p>";
+  }
+  if(page === "insight"){
+    return "<div class=\"insight\"><p class=\"tag kicker-blue\">Ai insight</p>" +
+      "<div><p class=\"tag kicker-blue\" style=\"font-size:12px;\">What happened</p><p class=\"bigtext\">" + story.what + "</p></div>" +
+      "<div><p class=\"tag kicker-blue\" style=\"font-size:12px;\">Why it happened</p><p class=\"bigtext\">" + story.why + "</p></div></div>";
+  }
+  if(page === "cluster"){
+    let rows = "";
+    for(const c of story.cluster){
+      rows += "<div class=\"clusterrow\"><i class=\"ti ti-circle-filled\" style=\"font-size:8px;color:#3B6D11;margin-top:6px;\"></i>" +
+        "<div><p style=\"font-size:12px;font-weight:700;color:#3B6D11;\">" + c[0] + "</p><p style=\"font-size:14px;color:var(--dark);\">" + c[1] + "</p></div></div>";
+    }
+    return "<div class=\"cluster\"><p class=\"tag kicker-green\">Story cluster</p>" +
+      "<p style=\"font-size:12.5px;color:#5b6b4a;margin:2px 0 4px;\">How this story evolved</p>" + rows + "</div>";
+  }
+  return "<div class=\"actions\"><p class=\"tag kicker-amber\">Recommended action</p>" +
+    "<p class=\"bigtext\">" + story.action + "</p>" +
+    "<div class=\"statgrid\"><div class=\"statcard\"><p class=\"lbl\">Risk level</p><p class=\"val\">" + story.risk + "</p></div>" +
+    "<div class=\"statcard\"><p class=\"lbl\">Confidence</p><p class=\"val\">" + story.conf + "</p></div></div></div>";
+}
+
+function clip(html, isTop){
+  const offset = isTop ? 0 : -HALF;
+  return "<div style=\"position:relative; top:" + offset + "px; height:" + SCREEN_H + "px; background:#F7F8FC;\">" + html + "</div>";
+}
+
+function renderDots(){
+  let html = "";
+  for(let i=0;i<pages.length;i++){
+    html += "<span class=\"dot " + (i===pi?"active":"") + "\" style=\"width:" + (i===pi?16:6) + "px;\"></span>";
+  }
+  dotsEl.innerHTML = html;
+}
+
+function renderIdle(){
+  const html = pageBlock(stories[si], pages[pi]);
+  topFrontEl.innerHTML = clip(html, true);
+  topFrontEl.style.transition = "none";
+  topFrontEl.style.transform = "rotateX(0deg)";
+  topFrontEl.style.filter = "brightness(1)";
+  bottomBackEl.innerHTML = clip(html, false);
+  bottomFrontEl.style.transition = "none";
+  bottomFrontEl.style.transform = "rotateX(100deg)";
+  bottomFrontEl.style.filter = "brightness(1)";
+  cardWrap.style.transition = "none";
+  cardWrap.style.transform = "rotateY(0deg)";
+  hBack.style.display = "none";
+  renderDots();
+  label.textContent = "Story " + (si+1) + " of " + stories.length + " — " + stories[si].name + "  ·  page " + (pi+1) + " of 4";
+}
+renderIdle();
+
+let lastVDir = 0, vTargetExists = false;
+
+function ensureVerticalContent(dir){
+  if(lastVDir === dir) return;
+  lastVDir = dir;
+  const targetIdx = si + dir;
+  vTargetExists = targetIdx >= 0 && targetIdx < stories.length;
+  const targetStory = vTargetExists ? stories[targetIdx] : stories[si];
+  const currentHtml = pageBlock(stories[si], pages[pi]);
+  const targetHtml = pageBlock(targetStory, "original");
+  if(dir > 0){
+    topFrontEl.innerHTML = clip(currentHtml, true);
+    topBackEl.innerHTML = clip(targetHtml, true);
+    bottomBackEl.innerHTML = clip(currentHtml, false);
+    bottomFrontEl.innerHTML = clip(targetHtml, false);
+  } else {
+    bottomFrontEl.innerHTML = clip(currentHtml, false);
+    bottomBackEl.innerHTML = clip(targetHtml, false);
+    topBackEl.innerHTML = clip(currentHtml, true);
+    topFrontEl.innerHTML = clip(targetHtml, true);
+  }
+}
+
+function setFlap(zone, angle){
+  const el = zone === "top" ? topFrontEl : bottomFrontEl;
+  el.style.transition = "none";
+  el.style.transform = "rotateX(" + angle + "deg)";
+  const bright = 1 - Math.min(Math.abs(angle) / 95, 1) * 0.35;
+  el.style.filter = "brightness(" + bright.toFixed(2) + ")";
+}
+
+function updateVerticalFlip(dir, progress){
+  progress = Math.max(0, Math.min(1, progress));
+  ensureVerticalContent(dir);
+  const leader = dir > 0 ? "top" : "bottom";
+  const follower = dir > 0 ? "bottom" : "top";
+  const leaderHiddenAngle = leader === "top" ? -95 : 95;
+  const followerHiddenAngle = follower === "top" ? -100 : 100;
+  if(progress <= 0.5){
+    const t = progress / 0.5;
+    setFlap(leader, leaderHiddenAngle * t);
+    setFlap(follower, followerHiddenAngle);
+  } else {
+    setFlap(leader, leaderHiddenAngle);
+    const t = (progress - 0.5) / 0.5;
+    setFlap(follower, followerHiddenAngle * (1 - t));
+  }
+}
+
+function animateProgress(from, to, duration, onUpdate, onDone){
+  const start = performance.now();
+  function step(now){
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    onUpdate(from + (to - from) * eased);
+    if(t < 1) requestAnimationFrame(step);
+    else if(onDone) onDone();
+  }
+  requestAnimationFrame(step);
+}
+
+function finishVertical(dir, completed){
+  if(completed && vTargetExists){
+    animateProgress(currentVProgress, 1, 140, (p) => updateVerticalFlip(dir, p), () => {
+      si += dir; pi = 0;
+      renderIdle();
+      lastVDir = 0;
+    });
+  } else {
+    animateProgress(currentVProgress, 0, 200, (p) => updateVerticalFlip(dir, p), () => {
+      renderIdle();
+      lastVDir = 0;
+    });
+  }
+}
+
+function jumpStory(dir){
+  const targetIdx = si + dir;
+  if(targetIdx < 0 || targetIdx >= stories.length) return;
+  currentVProgress = 0;
+  animateProgress(0, 1, 380, (p) => { currentVProgress = p; updateVerticalFlip(dir, p); }, () => {
+    si += dir; pi = 0;
+    renderIdle();
+    lastVDir = 0;
+  });
+}
+
+function updateHorizontalTilt(dir, progress){
+  progress = Math.max(0, Math.min(1, progress));
+  const targetIdx = pi + dir;
+  const targetExists = targetIdx >= 0 && targetIdx <= 3;
+  if(targetExists){
+    hBack.innerHTML = pageBlock(stories[si], pages[targetIdx]);
+    hBack.style.display = "flex";
+    hBack.style.flexDirection = "column";
+  }
+  const angle = (dir > 0 ? -1 : 1) * progress * 130 * (targetExists ? 1 : 0.25);
+  cardWrap.style.transformOrigin = dir > 0 ? "right center" : "left center";
+  cardWrap.style.transition = "none";
+  cardWrap.style.transform = "rotateY(" + angle + "deg)";
+  cardWrap.style.filter = "brightness(" + (1 - Math.min(progress, 1) * 0.3).toFixed(2) + ")";
+}
+
+function finishHorizontal(dir, completed){
+  const targetIdx = pi + dir;
+  const targetExists = targetIdx >= 0 && targetIdx <= 3;
+  if(completed && targetExists){
+    animateProgress(currentHProgress, 1, 130, (p) => updateHorizontalTilt(dir, p), () => {
+      pi += dir;
+      renderIdle();
+    });
+  } else {
+    animateProgress(currentHProgress, 0, 180, (p) => updateHorizontalTilt(dir, p), () => {
+      renderIdle();
+    });
+  }
+}
+
+function jumpPage(dir){
+  const targetIdx = pi + dir;
+  if(targetIdx < 0 || targetIdx > 3) return;
+  currentHProgress = 0;
+  animateProgress(0, 1, 320, (p) => { currentHProgress = p; updateHorizontalTilt(dir, p); }, () => {
+    pi += dir;
+    renderIdle();
+  });
+}
+
+document.getElementById("pgL").addEventListener("click", () => jumpPage(-1));
+document.getElementById("pgR").addEventListener("click", () => jumpPage(1));
+document.getElementById("stU").addEventListener("click", () => jumpStory(-1));
+document.getElementById("stD").addEventListener("click", () => jumpStory(1));
+
+let dragging = false, axis = null, startX = 0, startY = 0;
+let currentVProgress = 0, currentHProgress = 0, dragDir = 0;
+const V_DISTANCE = SCREEN_H * 0.75;
+const H_DISTANCE = 312 * 0.7;
+
+screenEl.addEventListener("pointerdown", (e) => {
+  dragging = true; axis = null;
+  startX = e.clientX; startY = e.clientY;
+  screenEl.setPointerCapture(e.pointerId);
+});
+
+screenEl.addEventListener("pointermove", (e) => {
+  if(!dragging) return;
+  const dx = e.clientX - startX, dy = e.clientY - startY;
+  if(axis === null){
+    if(Math.hypot(dx, dy) < 8) return;
+    axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+  }
+  e.preventDefault();
+  if(axis === "y"){
+    dragDir = dy < 0 ? 1 : -1;
+    currentVProgress = Math.min(Math.abs(dy) / V_DISTANCE, 1);
+    updateVerticalFlip(dragDir, currentVProgress);
+  } else {
+    dragDir = dx < 0 ? 1 : -1;
+    currentHProgress = Math.min(Math.abs(dx) / H_DISTANCE, 1);
+    updateHorizontalTilt(dragDir, currentHProgress);
+  }
+});
+
+screenEl.addEventListener("pointerup", () => {
+  if(!dragging) return;
+  dragging = false;
+  if(axis === "y") finishVertical(dragDir, currentVProgress > 0.5);
+  else if(axis === "x") finishHorizontal(dragDir, currentHProgress > 0.45);
+  axis = null;
+});
+</script>
+</body>
+</html>

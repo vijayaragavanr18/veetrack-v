@@ -1,0 +1,200 @@
+"use client";
+
+/**
+ * FlipStoryViewer — top-level orchestrator for the half-bend flip UI.
+ *
+ * Wires together:
+ *   - useFlipGesture: single pointer handler locking to vertical OR horizontal
+ *   - VerticalFlipCard: story-to-story flip (rotateX around horizontal crease)
+ *   - HorizontalFlipCard: page-to-page flip (rotateY around vertical edge)
+ *   - feedStore: single source of truth for navigation state
+ *
+ * prefers-reduced-motion: falls back to instant swap (no 3D transforms).
+ */
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useReducedMotion, useMotionValue } from "framer-motion";
+import type { MockStory } from "@/types";
+import { useFeedStore } from "@/store/feedStore";
+import { useFlipGesture } from "./useFlipGesture";
+import VerticalFlipCard from "./VerticalFlipCard";
+import HorizontalFlipCard from "./HorizontalFlipCard";
+import Page1Original from "@/components/pages/Page1Original";
+import Page2Insight from "@/components/pages/Page2Insight";
+import Page3Cluster from "@/components/pages/Page3Cluster";
+import Page4Recommendations from "@/components/pages/Page4Recommendations";
+
+interface FlipStoryViewerProps {
+  stories: MockStory[];
+  isLoading?: boolean;
+}
+
+function PageContent({ story, page }: { story: MockStory; page: 1 | 2 | 3 | 4 }) {
+  if (page === 1) return <Page1Original story={story} />;
+  if (page === 2) return <Page2Insight story={story} />;
+  if (page === 3) return <Page3Cluster story={story} />;
+  return <Page4Recommendations story={story} />;
+}
+
+function PageDots({
+  currentPage,
+  onPageClick,
+}: {
+  currentPage: 1 | 2 | 3 | 4;
+  onPageClick: (p: 1 | 2 | 3 | 4) => void;
+}) {
+  const labels = ["Original", "Insight", "Cluster", "Actions"] as const;
+  return (
+    <div className="flex justify-center gap-2 py-2 shrink-0" role="tablist" aria-label="Story pages">
+      {([1, 2, 3, 4] as const).map((p) => (
+        <button
+          key={p}
+          role="tab"
+          aria-selected={currentPage === p}
+          aria-label={labels[p - 1]}
+          onClick={() => onPageClick(p)}
+          className={`h-2 rounded-full transition-all duration-200 ${
+            currentPage === p
+              ? "w-6 bg-primary"
+              : "w-2 bg-muted-foreground/40 hover:bg-muted-foreground/70"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function FlipStoryViewer({ stories, isLoading = false }: FlipStoryViewerProps) {
+  const {
+    currentStoryIndex, currentPage,
+    nextStory, prevStory, nextPage, prevPage, goToPage,
+  } = useFeedStore();
+
+  const reduced = useReducedMotion();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cardSize, setCardSize] = useState({ width: 600, height: 640 });
+
+  // Idle MotionValue — always zero, used when no gesture is active
+  const idleProgress = useMotionValue(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (e) setCardSize({ width: e.contentRect.width, height: e.contentRect.height });
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const onStoryChange = useCallback(
+    (delta: -1 | 1) => { if (delta === 1) nextStory(stories.length); else prevStory(); },
+    [nextStory, prevStory, stories.length],
+  );
+  const onPageChange = useCallback(
+    (delta: -1 | 1) => { if (delta === 1) nextPage(); else prevPage(); },
+    [nextPage, prevPage],
+  );
+
+  const gesture = useFlipGesture({
+    totalStories: stories.length,
+    currentStoryIndex,
+    totalPages: 4,
+    currentPage,
+    cardHeight: cardSize.height,
+    cardWidth: cardSize.width,
+    onStoryChange,
+    onPageChange,
+  });
+
+  // ── Reduced motion fallback ────────────────────────────────────────────────
+  if (reduced) {
+    const story = stories[currentStoryIndex];
+    if (!story) return null;
+    return (
+      <div className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] flex flex-col rounded-lg border border-border bg-card overflow-hidden">
+        <PageDots currentPage={currentPage} onPageClick={goToPage} />
+        <div className="flex-1 overflow-y-auto">
+          <PageContent story={story} page={currentPage} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] rounded-lg border border-border bg-card animate-pulse" />;
+  }
+
+  const story = stories[currentStoryIndex];
+  if (!story) return null;
+
+  const dir = gesture.direction.current;
+  const lockedAxis = gesture.axis.current;
+
+  // Adjacent story (for vertical flip)
+  const targetStory = stories[currentStoryIndex + dir] ?? null;
+
+  // Adjacent page (for horizontal flip)
+  const targetPageNum = (currentPage + dir) as 1 | 2 | 3 | 4;
+  const targetPageValid = targetPageNum >= 1 && targetPageNum <= 4;
+
+  // ── Page views ─────────────────────────────────────────────────────────────
+  const currentPageContent = (
+    <div className="absolute inset-0 overflow-y-auto bg-card">
+      <PageContent story={story} page={currentPage} />
+    </div>
+  );
+  const targetPageContent = targetPageValid ? (
+    <div className="absolute inset-0 overflow-y-auto bg-card">
+      <PageContent story={story} page={targetPageNum} />
+    </div>
+  ) : null;
+
+  // ── Story slots ────────────────────────────────────────────────────────────
+  // The "current" slot in the vertical flip contains the horizontal page flip
+  const currentStorySlot = (
+    <div className="absolute inset-0 flex flex-col bg-card">
+      <PageDots currentPage={currentPage} onPageClick={goToPage} />
+      <div className="flex-1 relative overflow-hidden">
+        {lockedAxis === "horizontal" ? (
+          <HorizontalFlipCard
+            currentContent={currentPageContent}
+            targetContent={targetPageContent}
+            direction={dir}
+            progress={gesture.progress}
+          />
+        ) : (
+          currentPageContent
+        )}
+      </div>
+    </div>
+  );
+
+  const targetStorySlot = targetStory ? (
+    <div className="absolute inset-0 flex flex-col bg-card">
+      <PageDots currentPage={1} onPageClick={goToPage} />
+      <div className="flex-1 overflow-y-auto">
+        <PageContent story={targetStory} page={1} />
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] relative rounded-lg border border-border overflow-hidden select-none cursor-grab active:cursor-grabbing"
+      style={{ touchAction: "none" }}
+      data-testid="story-viewport"
+      {...gesture.pointerHandlers}
+    >
+      <VerticalFlipCard
+        currentContent={currentStorySlot}
+        targetContent={lockedAxis === "vertical" ? targetStorySlot : null}
+        direction={dir}
+        progress={lockedAxis === "vertical" ? gesture.progress : idleProgress}
+        cardHeight={cardSize.height}
+      />
+    </div>
+  );
+}

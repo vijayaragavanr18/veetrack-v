@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: veetrack-config
+  namespace: veetrack
+  labels:
+    app.kubernetes.io/part-of: veetrack
+data:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  PROMETHEUS_ENABLED: "true"
+  # Redis URL — uses the in-cluster Service name
+  REDIS_URL: "redis://redis:6379/0"
+  # DATABASE_URL — password is injected at runtime via envFrom secretRef
+  # so the password never appears in the ConfigMap.
+  DATABASE_URL: "postgresql+asyncpg://veetrack:$(POSTGRES_PASSWORD)@postgres:5432/veetrack"
+  # LLM routing
+  LLM_HOSTED_MODEL: "claude-haiku-4-5-20251001"

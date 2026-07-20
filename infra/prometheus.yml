@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "veetrack-api"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # Worker Prometheus metrics exposed via prometheus_client HTTP server
+  # (started manually via `prometheus_client.start_http_server(9090)` in worker entrypoint)
+  - job_name: "veetrack-workers"
+    static_configs:
+      - targets: ["host.docker.internal:9090"]
+    scrape_interval: 15s

@@ -1,0 +1,218 @@
+# Two worker Deployments:
+#
+#   worker-io   — ingestion + alerts queues; CPU-only; 2 replicas; HPA enabled
+#   worker-nlp  — nlp + llm queues; GPU-constrained; 1 replica; no HPA
+#
+# Beat scheduler is a separate Deployment (always 1 replica, no scaling).
+---
+# ── ingestion + alerts worker ─────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-io
+  namespace: veetrack
+  labels:
+    app.kubernetes.io/name: worker-io
+    app.kubernetes.io/part-of: veetrack
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: worker-io
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker-io
+        app.kubernetes.io/part-of: veetrack
+    spec:
+      terminationGracePeriodSeconds: 120   # allow in-flight tasks to drain
+      containers:
+        - name: worker
+          image: veetrack-worker:latest
+          imagePullPolicy: Always
+          command:
+            - celery
+            - -A
+            - celery_app
+            - worker
+            - --loglevel=info
+            - -Q
+            - ingestion,alerts
+            - --concurrency=4
+          envFrom:
+            - configMapRef:
+                name: veetrack-config
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: postgres-password
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://veetrack:$(POSTGRES_PASSWORD)@postgres-svc:5432/veetrack"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: jwt-secret
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: anthropic-api-key
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: sentry-dsn
+            - name: NEWSDATA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: newsdata-api-key
+            - name: TWITTERAPI_IO_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: twitterapi-io-key
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+---
+# ── NLP + LLM worker (GPU node) ───────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-nlp
+  namespace: veetrack
+  labels:
+    app.kubernetes.io/name: worker-nlp
+    app.kubernetes.io/part-of: veetrack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: worker-nlp
+  strategy:
+    type: Recreate   # GPU resource can only be held by one pod at a time
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker-nlp
+        app.kubernetes.io/part-of: veetrack
+    spec:
+      terminationGracePeriodSeconds: 180
+      # Taint toleration: add `gpu=true:NoSchedule` taint to GPU nodes
+      tolerations:
+        - key: gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      nodeSelector:
+        gpu: "true"
+      containers:
+        - name: worker
+          image: veetrack-worker:latest
+          imagePullPolicy: Always
+          command:
+            - celery
+            - -A
+            - celery_app
+            - worker
+            - --loglevel=info
+            - -Q
+            - nlp,llm
+            - --concurrency=2
+          envFrom:
+            - configMapRef:
+                name: veetrack-config
+          env:
+            - name: PYTORCH_CUDA_ALLOC_CONF
+              value: expandable_segments:True
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: postgres-password
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://veetrack:$(POSTGRES_PASSWORD)@postgres-svc:5432/veetrack"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: jwt-secret
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: anthropic-api-key
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: sentry-dsn
+          resources:
+            requests:
+              cpu: "1"
+              memory: "4Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "4"
+              memory: "12Gi"
+              nvidia.com/gpu: "1"
+# No HPA for worker-nlp — GPU is the hard constraint; scaling is done
+# by provisioning more GPU nodes and increasing replicas manually.
+---
+# ── Beat scheduler (always exactly 1 replica) ─────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beat
+  namespace: veetrack
+  labels:
+    app.kubernetes.io/name: beat
+    app.kubernetes.io/part-of: veetrack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: beat
+  strategy:
+    type: Recreate   # MUST be Recreate — two beat instances = duplicate tasks
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: beat
+        app.kubernetes.io/part-of: veetrack
+    spec:
+      containers:
+        - name: beat
+          image: veetrack-beat:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: veetrack-config
+          env:
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://veetrack:$(POSTGRES_PASSWORD)@postgres-svc:5432/veetrack"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: veetrack-secrets
+                  key: postgres-password
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"

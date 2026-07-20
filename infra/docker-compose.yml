@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: veetrack-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-veetrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-veetrack}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-veetrack} -d ${POSTGRES_DB:-veetrack}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: veetrack-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus + Grafana are defined in docker-compose.monitoring.yml.
+  # Start them only when you need live metrics:
+  #   docker compose -f infra/docker-compose.yml -f infra/docker-compose.monitoring.yml up -d
+
+volumes:
+  postgres_data:

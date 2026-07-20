@@ -1,0 +1,240 @@
+# Production Docker Compose stack for VeeTrack.
+#
+# Usage:
+#   docker compose -f infra/docker-compose.prod.yml --env-file .env up -d
+#
+# Prerequisites:
+#   - .env populated from .env.example (all required vars set)
+#   - TLS certificates at infra/nginx/certs/cert.pem + key.pem
+#   - docker compose v2 (bundled with Docker Desktop ≥ 3.6 and Docker Engine ≥ 23)
+#
+# Network topology:
+#   nginx (80/443) → api:8000 / web:3000
+#   All other services are isolated on veetrack_net (no host port bindings).
+
+name: veetrack-prod
+
+services:
+
+  # ── Data tier ────────────────────────────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-veetrack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-veetrack}
+      # Tuning: WAL compression, connection pool headroom
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - veetrack_net
+    # No host port binding — reachable only within veetrack_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-veetrack} -d ${POSTGRES_DB:-veetrack}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Enable AOF persistence (fsync every second) for durability
+    command:
+      - redis-server
+      - --appendonly yes
+      - --appendfsync everysec
+      - --maxmemory 512mb
+      - --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - veetrack_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Application tier ─────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    image: veetrack-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY:-}
+      TWITTERAPI_IO_KEY: ${TWITTERAPI_IO_KEY:-}
+      LLM_LOCAL_ENDPOINT: ${LLM_LOCAL_ENDPOINT:-}
+      LLM_LOCAL_MODEL: ${LLM_LOCAL_MODEL:-}
+      LLM_HOSTED_MODEL: ${LLM_HOSTED_MODEL:-claude-haiku-4-5-20251001}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PROMETHEUS_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - veetrack_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/docker/workers.Dockerfile
+    image: veetrack-worker:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      NEWSDATA_API_KEY: ${NEWSDATA_API_KEY:-}
+      TWITTERAPI_IO_KEY: ${TWITTERAPI_IO_KEY:-}
+      LLM_LOCAL_ENDPOINT: ${LLM_LOCAL_ENDPOINT:-}
+      LLM_LOCAL_MODEL: ${LLM_LOCAL_MODEL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - veetrack_net
+
+  beat:
+    build:
+      context: ..
+      dockerfile: infra/docker/workers.beat.Dockerfile
+    image: veetrack-beat:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    # Beat MUST run as a single replica — multiple beat instances cause
+    # duplicate task firing. Scale workers, not beat.
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - veetrack_net
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+    image: veetrack-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://api:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - veetrack_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Edge / ingress tier ───────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:1.26-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    networks:
+      - veetrack_net
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # ── Observability tier ────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9099:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    networks:
+      - veetrack_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.1.3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - veetrack_net
+
+networks:
+  veetrack_net:
+    driver: bridge
+    internal: false   # nginx needs external traffic; internal services never bind host ports
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
