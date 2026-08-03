@@ -45,6 +45,9 @@ class ArticleModel(Base):
     dedup_agent_path: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'fast_path'")
     )
+    is_duplicate_of: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("articles.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
