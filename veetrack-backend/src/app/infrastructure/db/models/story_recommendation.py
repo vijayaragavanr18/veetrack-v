@@ -28,6 +28,12 @@ class StoryRecommendationModel(Base):
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    agent_mode: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=func.text("'fast_path'")
+    )
+    reasoning_trace: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default=func.text("'[]'")
+    )
 
     story: Mapped[StoryModel] = relationship(
         "StoryModel", back_populates="recommendations", lazy="raise"
