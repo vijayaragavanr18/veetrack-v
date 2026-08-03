@@ -157,7 +157,12 @@ async def _run_cluster(
                 logger.info("cluster_article.no_embedding", article_id=article_id)
                 return {"status": "skipped_no_embedding"}
 
-            article_vec: list[float] = list(result[0])
+            import json
+            raw_vec = result[0]
+            if isinstance(raw_vec, str):
+                article_vec = json.loads(raw_vec)
+            else:
+                article_vec = list(raw_vec)
             headline: str = result[1] or ""
 
             # 2. Get active-story centroid cache
