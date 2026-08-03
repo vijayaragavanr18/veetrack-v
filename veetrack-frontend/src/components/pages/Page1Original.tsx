@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { BookOpen, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { MockStory } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import PublishedTime from "@/components/ui/PublishedTime";
 import WatchlistToggle from "@/components/ui/WatchlistToggle";
-import CategoryTag from "@/components/ui/CategoryTag";
 import EngagementRow from "@/components/ui/EngagementRow";
 import { useSavedStore } from "@/store/savedStore";
 

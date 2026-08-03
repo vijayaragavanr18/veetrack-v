@@ -100,7 +100,7 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
       const expectedMovement = dir === 1 ? -rawOffset : rawOffset;
       
       // If they dragged in the opposite direction, clamp at 0
-      let raw = Math.max(0, expectedMovement / distance);
+      const raw = Math.max(0, expectedMovement / distance);
       
       return hasTarget ? Math.min(raw, 1) : Math.min(raw, 1) * EDGE_DAMP;
     },
@@ -137,7 +137,7 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
           if (shouldComplete) {
             // HAPTIC FEEDBACK: Subtle tick on page flip completion
             if (typeof navigator !== "undefined" && navigator.vibrate) {
-              try { navigator.vibrate(15); } catch (e) {}
+              try { navigator.vibrate(15); } catch { /* ignore */ }
             }
             if (isVertical) onStoryChange(dir);
             else onPageChange(dir);
