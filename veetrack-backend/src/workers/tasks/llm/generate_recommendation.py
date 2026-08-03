@@ -280,7 +280,7 @@ async def _run_generate(story_id: str, settings: RecommendationSettings) -> dict
                         "review": rec.needs_human_review,
                         "gen_at": datetime.now(UTC),
                         "mode": rec.agent_mode,
-                        "trace": json.dumps(rec.reasoning_trace) if rec.reasoning_trace else None,
+                        "trace": json.dumps(rec.reasoning_trace) if rec.reasoning_trace else "[]",
                     },
                 )
 
