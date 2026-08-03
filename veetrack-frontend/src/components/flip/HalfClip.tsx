@@ -10,29 +10,41 @@
 
 interface HalfClipProps {
   /** Which half to show. */
-  half: "top" | "bottom";
-  /** Full height of the card (px). */
-  cardHeight: number;
+  half: "top" | "bottom" | "left" | "right";
   children: React.ReactNode;
   className?: string;
 }
 
 export default function HalfClip({
   half,
-  cardHeight,
   children,
   className,
 }: HalfClipProps) {
-  const halfH = cardHeight / 2;
-  const offsetY = half === "bottom" ? -halfH : 0;
+  const isHorizontal = half === "left" || half === "right";
+  
+  const offsetY = half === "bottom" ? "-100%" : "0";
+  const offsetX = half === "right" ? "-100%" : "0";
 
   return (
     <div
-      style={{ height: halfH, overflow: "hidden", position: "relative" }}
+      style={{
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        position: "relative"
+      }}
       className={className}
     >
-      {/* Full-height inner pushes content into view through the clip window */}
-      <div style={{ position: "absolute", top: offsetY, left: 0, right: 0, height: cardHeight }}>
+      {/* Full inner pushes content into view through the clip window */}
+      <div 
+        style={{ 
+          position: "absolute", 
+          top: offsetY, 
+          left: offsetX, 
+          width: isHorizontal ? "200%" : "100%",
+          height: isHorizontal ? "100%" : "200%" 
+        }}
+      >
         {children}
       </div>
     </div>

@@ -225,6 +225,19 @@ class WatchlistRepository(Protocol):
         """Persist a new alert record."""
         ...
 
+    async def get_alert_by_id(self, alert_id: str) -> AlertRecord:
+        """Return an AlertRecord by primary key; raise NotFoundError if absent."""
+        ...
+
+    async def record_alert_feedback(
+        self,
+        alert_id: str,
+        user_id: str,
+        feedback: str,
+    ) -> AlertRecord:
+        """Set user_feedback ('useful'|'not_useful') on an alert row."""
+        ...
+
 
 @runtime_checkable
 class ApiUsageLogRepository(Protocol):

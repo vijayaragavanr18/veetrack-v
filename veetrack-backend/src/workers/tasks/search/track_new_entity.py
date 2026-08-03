@@ -85,9 +85,29 @@ async def _run_track(keyword: str, settings: TrackSettings) -> dict[str, Any]:
 
         # 2. Trigger connector pulls
         from workers.tasks.ingestion.watch_newsdata import run as newsdata_run
+        from workers.tasks.ingestion.watch_twitter import run as twitter_run
+        from workers.tasks.ingestion.watch_rss import run as rss_run
+        from workers.tasks.ingestion.watch_youtube import run as youtube_run
 
+        # Start NewsData.io fetch
         newsdata_run.apply_async(
             kwargs={"source_id": f"auto-{entity_id[:8]}", "query": keyword},
+            queue="ingestion",
+        )
+        # Start Twitter fetch
+        twitter_run.apply_async(
+            kwargs={"source_id": f"tw-{entity_id[:8]}", "query": keyword},
+            queue="ingestion",
+        )
+        # Start RSS fetch (Google News RSS for the keyword)
+        rss_url = f"https://news.google.com/rss/search?q={keyword.replace(' ', '+')}&hl=en-US&gl=US&ceid=US:en"
+        rss_run.apply_async(
+            kwargs={"source_id": f"rss-{entity_id[:8]}", "feed_urls": [rss_url]},
+            queue="ingestion",
+        )
+        # Start YouTube fetch
+        youtube_run.apply_async(
+            kwargs={"source_id": f"yt-{entity_id[:8]}", "query": keyword},
             queue="ingestion",
         )
 
@@ -97,7 +117,7 @@ async def _run_track(keyword: str, settings: TrackSettings) -> dict[str, Any]:
         cache_run.apply_async(
             kwargs={"entity_id": entity_id},
             queue="ingestion",
-            countdown=30,  # allow 30s for ingestion pipeline to run first
+            countdown=45,  # allow 45s for ingestion pipeline to run first
         )
 
         return {"status": "ok", "entity_id": entity_id, "keyword": keyword}

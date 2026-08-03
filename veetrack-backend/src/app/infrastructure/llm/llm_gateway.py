@@ -1,7 +1,7 @@
 """Routing LLM gateway with retry/back-off and Redis-backed circuit breaker.
 
 Routes calls to either:
-  - ``model_tier="local"``  → VllmClient (Qwen3 4B via vLLM)
+  - ``model_tier="local"``  → OllamaClient (Qwen2.5 3B via Ollama)
   - ``model_tier="hosted"`` → HostedClient (Claude via Anthropic SDK)
 
 The circuit breaker follows the same pattern as infrastructure/connectors/base.py:
@@ -43,7 +43,7 @@ class RoutingLLMGateway:
     Parameters
     ----------
     local_client:
-        VllmClient (or any LLMGateway-compatible object) for the local tier.
+        OllamaClient (or any LLMGateway-compatible object) for the local tier.
     hosted_client:
         HostedClient (or any LLMGateway-compatible object) for the hosted tier.
     redis:

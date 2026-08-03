@@ -43,8 +43,8 @@ class EntitySettings(BaseSettings):
 
     database_url: str = ""
     gliner_model_id: str = _DEFAULT_MODEL
-    # Force CPU so GLiNER doesn't compete with vLLM for GPU memory.
-    # Set GLINER_DEVICE=cuda to use GPU only when vLLM is not running.
+    # Force CPU so GLiNER doesn't compete with Ollama for GPU memory.
+    # Set GLINER_DEVICE=cuda to use GPU only when Ollama is not running.
     gliner_device: str = "cpu"
 
 

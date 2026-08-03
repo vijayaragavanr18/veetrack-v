@@ -11,12 +11,14 @@ GET /stories/{id}
 
 from __future__ import annotations
 
+import asyncio
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 import httpx
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.application.use_cases.search.feed_types import (
     ArticleSummaryItem,
     FeedPage,
+    InsightItem,
+    RecommendationItem,
     StoryPayload,
 )
 from app.application.use_cases.search.get_feed import GetFeed
@@ -32,6 +36,7 @@ from app.core.container import get_cache_gateway, get_db_session, get_task_dispa
 from app.core.security_deps import get_optional_user
 from app.domain.entities import User
 from app.domain.interfaces.services import CacheGateway, TaskDispatcher
+from app.infrastructure.llm.ollama_client import OllamaClient
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(tags=["feed"])
@@ -111,6 +116,7 @@ def _make_db_query(session: AsyncSession):  # type: ignore[no-untyped-def]
 
 @router.get("/feed", response_model=FeedResponse)
 async def get_feed(
+    response: Response,
     entity: Annotated[str, Query(min_length=1, max_length=200)],
     cursor: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=25)] = 25,
@@ -136,6 +142,9 @@ async def get_feed(
         live_page = await _live_fetch_fallback(entity)
         if live_page:
             page = live_page
+
+    # Edge Caching: Cache on CDN for 10s, serve stale while revalidating for 60s
+    response.headers["Cache-Control"] = "public, s-maxage=10, stale-while-revalidate=60"
 
     return FeedResponse(
         stories=[_story_to_schema(s) for s in page.stories],
@@ -190,46 +199,214 @@ async def get_story(
 # Live fallback fetch — called when cold path finds nothing in DB
 # ---------------------------------------------------------------------------
 
+_OLLAMA_ENDPOINT = "http://localhost:11434/v1/chat/completions"
+_OLLAMA_MODEL = "qwen2.5:7b"
 
-async def _live_fetch_fallback(entity_query: str) -> FeedPage | None:
-    """Fetch from NewsData.io directly and return a FeedPage without persisting to DB.
+# Stop-words for topic clustering
+_STOP_WORDS = {
+    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
+    "of", "with", "is", "are", "was", "were", "has", "have", "had", "be",
+    "been", "being", "that", "this", "from", "by", "as", "it", "its",
+    "will", "would", "could", "should", "may", "might", "can", "up",
+    "new", "over", "after", "amid", "into", "about", "says", "said",
+}
 
-    Used as an immediate fallback when a search term has no cached or DB results.
-    Articles are returned in-memory only — the Celery pipeline will ingest them properly later.
-    """
-    settings = get_settings()
-    api_key = settings.newsdata_api_key
-    if not api_key:
-        return None
 
-    since = datetime.now(UTC) - timedelta(hours=48)
-    params = {
-        "apikey": api_key,
-        "q": entity_query,
-        "language": "en",
-        "size": "10",
-        "timeframe": "48",
-    }
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get("https://newsdata.io/api/1/latest", params=params)
-            resp.raise_for_status()
-            data = resp.json()
-    except Exception as exc:
-        logger.warning("feed.live_fallback.failed", error=str(exc))
-        return None
-
-    results = data.get("results") or []
-    if not results:
-        return None
-
-    articles: list[ArticleSummaryItem] = []
-    for item in results[:10]:
-        pub_raw = item.get("pubDate") or ""
+def _parse_pub_date(raw: str) -> datetime:
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S"):
         try:
-            pub_dt = datetime.strptime(pub_raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC) if pub_raw else datetime.now(UTC)
+            return datetime.strptime(raw, fmt).replace(tzinfo=UTC)
         except ValueError:
-            pub_dt = datetime.now(UTC)
+            continue
+    return datetime.now(UTC)
+
+
+def _title_keywords(title: str) -> set[str]:
+    words = re.findall(r"[A-Za-z]{4,}", title)
+    return {w.lower() for w in words if w.lower() not in _STOP_WORDS}
+
+
+def _cluster_articles(
+    raw_items: list[dict[str, Any]],
+    entity_query: str,
+) -> list[list[dict[str, Any]]]:
+    """Cluster articles by keyword overlap into topic groups.
+
+    Each article is assigned to the first cluster whose centroid shares ≥2
+    keywords with it; otherwise it seeds a new cluster.  Returns clusters
+    sorted by size descending, capped at 5 groups of at most 8 articles each.
+    """
+    clusters: list[tuple[set[str], list[dict[str, Any]]]] = []
+    entity_kw = _title_keywords(entity_query)
+
+    for item in raw_items:
+        title = str(item.get("title") or "")
+        kw = _title_keywords(title) | entity_kw
+        placed = False
+        for centroid, members in clusters:
+            if len(kw & centroid) >= 2:
+                members.append(item)
+                centroid.update(kw)
+                placed = True
+                break
+        if not placed:
+            clusters.append((set(kw), [item]))
+
+    clusters.sort(key=lambda c: len(c[1]), reverse=True)
+    return [members[:8] for _, members in clusters[:30]]
+
+
+async def _generate_insight(
+    entity_query: str,
+    headlines: list[str],
+    descriptions: list[str],
+) -> InsightItem:
+    """Call Ollama to generate a rich executive-brief insight for a story cluster."""
+    ollama = OllamaClient(model=_OLLAMA_MODEL, endpoint=_OLLAMA_ENDPOINT, timeout=90.0)
+    combined = "\n".join(
+        f"- {h}: {d[:200]}" for h, d in zip(headlines, descriptions) if h
+    )
+    prompt = (
+        f"You are a senior PR analyst writing executive intelligence briefs.\n\n"
+        f"Topic: {entity_query}\n\n"
+        f"News articles:\n{combined}\n\n"
+        f"Write a comprehensive executive brief with two sections:\n\n"
+        f"WHAT HAPPENED (250-350 words):\n"
+        f"Summarise the key developments, events, announcements, and facts from these articles. "
+        f"Be specific: include names, numbers, dates, and context. "
+        f"Explain the sequence of events and how they relate to each other. "
+        f"Cover the main storyline and any notable sub-plots.\n\n"
+        f"WHY IT MATTERS (250-350 words):\n"
+        f"Analyse the strategic implications for PR and communications teams. "
+        f"Why are these events happening now? What are the underlying drivers — market forces, "
+        f"regulatory pressure, competitive dynamics, or public sentiment shifts? "
+        f"What second-order effects should PR professionals anticipate? "
+        f"Which stakeholder groups are most affected and how?\n\n"
+        f"Format your response as:\n"
+        f"WHAT HAPPENED:\n[your what happened text]\n\n"
+        f"WHY IT MATTERS:\n[your why it matters text]"
+    )
+    try:
+        text_out = await ollama.complete(prompt, max_tokens=900, temperature=0.3)
+        what = ""
+        why = ""
+        if "WHY IT MATTERS:" in text_out:
+            parts = text_out.split("WHY IT MATTERS:", 1)
+            what_block = parts[0].replace("WHAT HAPPENED:", "").strip()
+            why_block = parts[1].strip()
+            what = what_block
+            why = why_block
+        else:
+            what = text_out.strip()
+            why = ""
+        return InsightItem(
+            what_happened=what or "Analysis pending.",
+            why_happened=why or "Analysis pending.",
+            model_used=_OLLAMA_MODEL,
+        )
+    except Exception as exc:
+        logger.warning("feed.live_fallback.insight_failed", error=str(exc))
+        headlines_text = "; ".join(headlines[:5])
+        return InsightItem(
+            what_happened=f"Latest developments on {entity_query}: {headlines_text}",
+            why_happened=f"These developments reflect ongoing activity around {entity_query}.",
+            model_used="fallback",
+        )
+
+
+async def _generate_recommendations(
+    entity_query: str,
+    what_happened: str,
+    risk_level: str,
+) -> list[RecommendationItem]:
+    """Call Ollama to generate 3 targeted PR recommendations."""
+    ollama = OllamaClient(model=_OLLAMA_MODEL, endpoint=_OLLAMA_ENDPOINT, timeout=90.0)
+    prompt = (
+        f"You are a senior PR strategist. Based on this news situation about {entity_query}:\n\n"
+        f"{what_happened[:600]}\n\n"
+        f"Write exactly 3 specific, actionable PR recommendations. "
+        f"Each recommendation must be for a different audience: "
+        f"one for the Communications Team, one for the Executive Team, and one for the Media Relations team.\n\n"
+        f"For each recommendation, write 150-200 words covering:\n"
+        f"- The specific action to take immediately\n"
+        f"- The messaging angle and key talking points\n"
+        f"- Which media/stakeholder channels to use\n"
+        f"- The risk if this action is NOT taken\n\n"
+        f"Format EXACTLY as:\n"
+        f"COMMUNICATIONS TEAM:\n[recommendation]\n\n"
+        f"EXECUTIVE TEAM:\n[recommendation]\n\n"
+        f"MEDIA RELATIONS:\n[recommendation]"
+    )
+    try:
+        text_out = await ollama.complete(prompt, max_tokens=900, temperature=0.3)
+        recs = []
+        audiences = [
+            ("communications", "Communications Team"),
+            ("executive", "Executive Team"),
+            ("media", "Media Relations"),
+        ]
+        audience_keys = ["COMMUNICATIONS TEAM:", "EXECUTIVE TEAM:", "MEDIA RELATIONS:"]
+        parts: dict[str, str] = {}
+        current_key = None
+        for line in text_out.splitlines():
+            stripped = line.strip()
+            matched = False
+            for ak in audience_keys:
+                if stripped.upper().startswith(ak.upper().rstrip(":")):
+                    current_key = ak
+                    parts[ak] = ""
+                    matched = True
+                    break
+            if not matched and current_key and stripped:
+                parts[current_key] = parts.get(current_key, "") + " " + stripped
+
+        for i, (aud_id, aud_label) in enumerate(audiences):
+            key = audience_keys[i]
+            rec_text = parts.get(key, "").strip()
+            if not rec_text:
+                rec_text = (
+                    f"Monitor {entity_query} coverage closely and prepare proactive messaging "
+                    f"tailored to the {aud_label}'s stakeholder priorities."
+                )
+            recs.append(
+                RecommendationItem(
+                    id=f"live-rec-{aud_id}",
+                    audience=aud_label,
+                    recommendation_text=rec_text,
+                    risk_level=risk_level,
+                    confidence_score=0.82,
+                    needs_human_review=risk_level in ("high", "critical"),
+                )
+            )
+        return recs
+    except Exception as exc:
+        logger.warning("feed.live_fallback.recs_failed", error=str(exc))
+        return []
+
+
+def _infer_risk_level(headlines: list[str]) -> str:
+    high_kw = {"crisis", "recall", "lawsuit", "scandal", "breach", "fraud", "collapse",
+               "bankrupt", "fired", "resign", "arrest", "hack", "leak", "death", "killed"}
+    medium_kw = {"investigation", "probe", "decline", "drop", "loss", "concern", "warn",
+                 "fine", "penalty", "delay", "layoff", "cut", "miss", "fail"}
+    joined = " ".join(h.lower() for h in headlines)
+    if any(k in joined for k in high_kw):
+        return "high"
+    if any(k in joined for k in medium_kw):
+        return "medium"
+    return "low"
+
+
+async def _build_story_from_cluster(
+    cluster_idx: int,
+    entity_query: str,
+    cluster_items: list[dict[str, Any]],
+    since: datetime,
+) -> StoryPayload | None:
+    articles: list[ArticleSummaryItem] = []
+    for item in cluster_items:
+        pub_raw = item.get("pubDate") or ""
+        pub_dt = _parse_pub_date(pub_raw) if pub_raw else datetime.now(UTC)
         if pub_dt < since:
             continue
         articles.append(
@@ -241,26 +418,106 @@ async def _live_fetch_fallback(entity_query: str) -> FeedPage | None:
                 sentiment_label="neutral",
                 hero_image_url=item.get("image_url") or None,
                 url=str(item.get("link") or ""),
-                content_preview=str(item.get("description") or item.get("content") or "")[:300],
+                content_preview=str(
+                    item.get("description") or item.get("content") or ""
+                )[:400],
             )
         )
 
     if not articles:
         return None
 
-    story = StoryPayload(
-        id=f"live-{entity_query.lower().replace(' ', '-')[:40]}",
-        title=f"{entity_query} — Live Results",
+    # Sort articles by published_at DESC (newest first)
+    articles.sort(key=lambda a: a.published_at, reverse=True)
+
+    headlines = [a.headline for a in articles]
+    descriptions = [a.content_preview for a in articles]
+    risk_level = _infer_risk_level(headlines)
+
+    # Derive story title from the most informative headline
+    story_title = headlines[0] if headlines else f"{entity_query} — Latest News"
+    if len(story_title) > 80:
+        story_title = story_title[:77] + "…"
+
+    insight = await _generate_insight(entity_query, headlines, descriptions)
+    recommendations = await _generate_recommendations(
+        entity_query, insight.what_happened, risk_level
+    )
+
+    slug = entity_query.lower().replace(" ", "-")[:30]
+    return StoryPayload(
+        id=f"live-{slug}-{cluster_idx}",
+        title=story_title,
         status="active",
-        risk_level="low",
+        risk_level=risk_level,
         primary_entity_id="",
         entity_name=entity_query,
         article_count=len(articles),
         articles=articles,
+        insight=insight,
+        recommendations=recommendations,
+        cluster_member_ids=[a.id for a in articles],
         updated_at=datetime.now(UTC).isoformat(),
     )
+
+
+async def _live_fetch_fallback(entity_query: str) -> FeedPage | None:
+    """Fetch from NewsData.io, cluster into topic stories, generate AI insight via Ollama.
+
+    Returns up to 5 fully-enriched StoryPayload objects with real hero images
+    and AI-generated executive briefs + PR recommendations.
+    """
+    settings = get_settings()
+    api_key = settings.newsdata_api_key
+    if not api_key:
+        return None
+
+    since = datetime.now(UTC) - timedelta(hours=72)
+    params = {
+        "apikey": api_key,
+        "q": entity_query,
+        "language": "en",
+        "size": "50",
+        "timeframe": "48",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get("https://newsdata.io/api/1/latest", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as exc:
+        logger.warning("feed.live_fallback.fetch_failed", error=str(exc))
+        return None
+
+    results = data.get("results") or []
+    if not results:
+        return None
+
+    clusters = _cluster_articles(results, entity_query)
+    if not clusters:
+        return None
+
+    # Build all stories concurrently — Ollama calls run in parallel per story
+    tasks = [
+        _build_story_from_cluster(i, entity_query, cluster, since)
+        for i, cluster in enumerate(clusters)
+    ]
+    built = await asyncio.gather(*tasks, return_exceptions=True)
+    stories: list[StoryPayload] = [
+        s for s in built if isinstance(s, StoryPayload)
+    ]
+
+    if not stories:
+        return None
+
+    # Sort stories by the published_at of their newest article
+    stories.sort(
+        key=lambda s: s.articles[0].published_at if s.articles else "", 
+        reverse=True
+    )
+
     return FeedPage(
-        stories=[story],
+        stories=stories,
         next_cursor=None,
         entity_id="",
         entity_name=entity_query,

@@ -66,7 +66,7 @@ export default function StoryViewport({
   const activeStory = stories[currentStoryIndex];
 
   return (
-    <div className="h-[calc(100vh-8rem)] min-h-[560px] max-h-[900px] relative overflow-hidden">
+    <div className="flex-1 min-h-0 relative overflow-hidden">
       <AnimatePresence mode="wait" custom={currentStoryIndex}>
         {activeStory && (
           <motion.div
@@ -82,7 +82,7 @@ export default function StoryViewport({
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.12}
             onDragEnd={onVerticalDragEnd}
-            className="absolute inset-0 rounded-lg border border-border bg-card overflow-hidden"
+            className="absolute inset-0 bg-card overflow-hidden"
             style={{ willChange: "transform" }}
             data-testid="story-viewport"
           >

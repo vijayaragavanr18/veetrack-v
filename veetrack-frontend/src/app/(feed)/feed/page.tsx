@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useFeedStore } from "@/store/feedStore";
 import { useKeyboardNav } from "@/hooks/useKeyboardNav";
@@ -25,20 +25,38 @@ function EmptyPrompt() {
 }
 
 function FeedContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get("q")?.trim() ?? "";
+  const time = searchParams.get("time")?.trim() ?? "all";
 
-  const { resetFeed } = useFeedStore();
+  const { resetFeed, lastQuery, setLastQuery, lastTime, setLastTime } = useFeedStore();
 
   const prevQuery = useRef(query);
+  const prevTime = useRef(time);
   useEffect(() => {
-    if (prevQuery.current !== query) {
+    if (query && query !== lastQuery) {
+      setLastQuery(query);
+    }
+    if (time && time !== lastTime) {
+      setLastTime(time);
+    }
+    
+    if (prevQuery.current !== query || prevTime.current !== time) {
       prevQuery.current = query;
+      prevTime.current = time;
       resetFeed();
     }
-  }, [query, resetFeed]);
+  }, [query, time, lastQuery, lastTime, setLastQuery, setLastTime, resetFeed]);
 
-  const { stories, isLoading } = useFeedQuery(query);
+  // If there's no query in URL but we have a lastQuery in store, redirect to it
+  useEffect(() => {
+    if (!query && lastQuery) {
+      router.replace(`/feed?q=${encodeURIComponent(lastQuery)}&time=${lastTime}`);
+    }
+  }, [query, lastQuery, lastTime, router]);
+
+  const { stories, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeedQuery(query, time);
   useKeyboardNav(stories.length);
 
   // No search query yet — show prompt instead of fetching
@@ -48,7 +66,13 @@ function FeedContent() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <FlipStoryViewer stories={stories} isLoading={isLoading} />
+      <FlipStoryViewer 
+        stories={stories} 
+        isLoading={isLoading}
+        fetchNextPage={fetchNextPage}
+        hasNextPage={hasNextPage}
+        isFetchingNextPage={isFetchingNextPage}
+      />
     </div>
   );
 }

@@ -61,6 +61,8 @@ class ReconcileResult:
     splits: list[SplitOp] = field(default_factory=list)
     new_stories: list[NewStoryOp] = field(default_factory=list)
     noise_article_ids: list[str] = field(default_factory=list)
+    timeline_highlights: dict[str, list[str]] = field(default_factory=dict)
+    is_pattern: dict[str, bool] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -72,8 +74,8 @@ def run_hdbscan(
     embeddings: np.ndarray,
     min_cluster_size: int = 3,
     min_samples: int = 2,
-) -> np.ndarray:
-    """Run HDBSCAN on *embeddings*; return integer label array (-1 = noise).
+) -> tuple[np.ndarray, np.ndarray]:
+    """Run HDBSCAN on *embeddings*; return integer label array (-1 = noise) and probabilities.
 
     Parameters
     ----------
@@ -92,8 +94,8 @@ def run_hdbscan(
         metric="euclidean",  # cosine ≡ euclidean for L2-normalised vectors
         core_dist_n_jobs=1,  # deterministic; worker has 1 core per process
     )
-    labels: np.ndarray = clusterer.fit_predict(embeddings)
-    return labels
+    clusterer.fit(embeddings)
+    return clusterer.labels_, clusterer.probabilities_
 
 
 # ---------------------------------------------------------------------------
@@ -116,11 +118,17 @@ class ReconcileClusters:
         self,
         min_cluster_size: int = 3,
         min_samples: int = 2,
+        gateway: Any | None = None,
+        tools: dict[str, Any] | None = None,
+        borderline_threshold: float = 0.5,
     ) -> None:
         self.min_cluster_size = min_cluster_size
         self.min_samples = min_samples
+        self.gateway = gateway
+        self.tools = tools or {}
+        self.borderline_threshold = borderline_threshold
 
-    def reconcile(
+    async def reconcile(
         self,
         article_ids: list[str],
         embeddings: np.ndarray,
@@ -147,16 +155,18 @@ class ReconcileClusters:
         if len(article_ids) == 0:
             return ReconcileResult()
 
-        labels = run_hdbscan(
+        labels, probabilities = run_hdbscan(
             embeddings,
             min_cluster_size=self.min_cluster_size,
             min_samples=self.min_samples,
         )
 
-        # Group article_ids by their HDBSCAN cluster label
+        # Group article_ids and their probabilities by their HDBSCAN cluster label
         cluster_to_articles: dict[int, list[str]] = {}
-        for article_id, label in zip(article_ids, labels.tolist(), strict=True):
+        cluster_to_probs: dict[int, list[float]] = {}
+        for article_id, label, prob in zip(article_ids, labels.tolist(), probabilities.tolist(), strict=True):
             cluster_to_articles.setdefault(int(label), []).append(article_id)
+            cluster_to_probs.setdefault(int(label), []).append(float(prob))
 
         result = ReconcileResult()
 
@@ -182,15 +192,6 @@ class ReconcileClusters:
                     result.new_stories.append(NewStoryOp(article_ids=members))
 
             elif len(existing_stories) == 1:
-                # All articles already in one story — check for split.
-                # A split occurs when HDBSCAN sees fewer articles for this story than are
-                # currently in it — meaning some of its articles went to another cluster
-                # (handled in that cluster's iteration) or became noise.
-                # Here we only handle the case where we have unassigned articles that
-                # HDBSCAN groups with an existing story → just add them to that story.
-                # True splits (one story maps to multiple HDBSCAN clusters) are detected
-                # below in the multi-story path on the OTHER cluster's iteration.
-
                 # Absorb any unassigned members into the existing story
                 if unassigned:
                     # Treat as a soft-merge (assign unassigned to existing story)
@@ -198,24 +199,39 @@ class ReconcileClusters:
 
             else:
                 # Multiple existing stories all fall into the same HDBSCAN cluster → MERGE
-                # Keep the story with the most members (oldest/largest).
                 target = max(existing_stories, key=lambda sid: story_article_counts.get(sid, 0))
                 sources = [sid for sid in existing_stories if sid != target]
-                for source in sources:
-                    result.merges.append(
-                        MergeOp(
-                            target_story_id=target,
-                            source_story_id=source,
-                            article_ids=story_to_members[source],
-                        )
+                
+                # Check if it's borderline
+                median_prob = float(np.median(cluster_to_probs[_cluster_label]))
+                action = "merge"
+                
+                if median_prob < self.borderline_threshold and self.gateway is not None:
+                    # Agentic adjudication
+                    action, highlights, is_pattern = await self._run_agent(
+                        f"Potential merge of stories. Target: {target}, Sources: {sources}", 
+                        target, 
+                        sources[0],
                     )
-                # Absorb any unassigned members too
-                if unassigned:
-                    result.new_stories.append(NewStoryOp(article_ids=unassigned))
+                    if is_pattern:
+                        result.is_pattern[target] = True
+                    if highlights:
+                        result.timeline_highlights[target] = highlights
+                
+                if action == "merge":
+                    for source in sources:
+                        result.merges.append(
+                            MergeOp(
+                                target_story_id=target,
+                                source_story_id=source,
+                                article_ids=story_to_members[source],
+                            )
+                        )
+                    # Absorb any unassigned members too
+                    if unassigned:
+                        result.new_stories.append(NewStoryOp(article_ids=unassigned))
 
         # Detect SPLITS: story that has articles in multiple HDBSCAN clusters
-        # (i.e., the same story_id appears as a key in story_to_members for more
-        # than one cluster_label).
         story_cluster_map: dict[str, list[int]] = {}
         for label_int, members_in_cluster in {
             **cluster_to_articles,
@@ -230,9 +246,10 @@ class ReconcileClusters:
             unique_labels = {lb for lb in cluster_labels_for_story if lb != -1}
             if len(unique_labels) > 1:
                 # Story appears in multiple distinct clusters → split
-                # Keep the cluster with the most members; split off the rest
                 cluster_sizes = {lb: len(cluster_to_articles.get(lb, [])) for lb in unique_labels}
                 keep_label = max(cluster_sizes, key=lambda lb: cluster_sizes[lb])
+                
+                # Check if the split cluster itself is borderline
                 for split_label in unique_labels:
                     if split_label == keep_label:
                         continue
@@ -242,11 +259,75 @@ class ReconcileClusters:
                         if article_to_story.get(aid, "") == story_id
                     ]
                     if split_articles:
-                        result.splits.append(
-                            SplitOp(
-                                source_story_id=story_id,
-                                article_ids=split_articles,
+                        median_prob = float(np.median(cluster_to_probs[split_label]))
+                        action = "split"
+                        
+                        if median_prob < self.borderline_threshold and self.gateway is not None:
+                            action, highlights, is_pattern = await self._run_agent(
+                                f"Potential split of story {story_id}.", 
+                                story_id, 
+                                story_id,
                             )
-                        )
+                            if is_pattern:
+                                result.is_pattern[story_id] = True
+                            if highlights:
+                                result.timeline_highlights[story_id] = highlights
+                                
+                        if action in ("split", "keep_separate") and action != "merge":
+                            # 'keep_separate' for a split means separate them -> perform split
+                            # 'split' means split
+                            result.splits.append(
+                                SplitOp(
+                                    source_story_id=story_id,
+                                    article_ids=split_articles,
+                                )
+                            )
 
         return result
+
+    async def _run_agent(self, context: str, cluster_a: str, cluster_b: str) -> tuple[str, list[str], bool]:
+        from app.application.use_cases.shared.prompts.agentic_clustering import (
+            SYSTEM_PROMPT,
+            TOOL_NAMES,
+            validate_final_answer,
+        )
+        from app.application.use_cases.shared.agent_loop import (
+            AgentDidNotConvergeError,
+            AgentLoop,
+        )
+        import structlog
+        
+        logger = structlog.get_logger(__name__)
+
+        loop = AgentLoop(
+            gateway=self.gateway,
+            system_prompt=SYSTEM_PROMPT,
+            tool_names=TOOL_NAMES,
+            tools=self.tools,
+            max_iterations=6,
+            max_tokens_per_step=600,
+            agent_name="clustering_agent",
+        )
+
+        initial_msg = (
+            f"{context}\n"
+            f"Cluster A: {cluster_a}\n"
+            f"Cluster B: {cluster_b}\n\n"
+            "Analyze the content and determine if these represent the same event (merge) "
+            "or distinct events (split / keep_separate)."
+        )
+
+        try:
+            loop_result = await loop.run(initial_msg, run_id=f"clustering:{cluster_a}:{cluster_b}")
+        except AgentDidNotConvergeError:
+            logger.warning("clustering.agent_did_not_converge")
+            return "merge", [], False  # fallback
+
+        final = loop_result.final_step
+        try:
+            validate_final_answer(final)
+        except ValueError as ve:
+            logger.warning("clustering.invalid_final_answer", error=str(ve))
+            return "merge", [], False
+
+        return str(final["action"]), list(final.get("timeline_highlights", [])), bool(final.get("is_pattern", False))

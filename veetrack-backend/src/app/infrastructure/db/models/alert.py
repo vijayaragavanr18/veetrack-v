@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import Base
@@ -29,6 +29,11 @@ class AlertModel(Base):
     )
     channel: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+
+    # Phase 24 (revised) — agentic alert columns
+    user_feedback: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    agent_path: Mapped[str] = mapped_column(String(20), nullable=False, default="fast_path")
+    reasoning_trace: Mapped[Any | None] = mapped_column(JSON, nullable=True)
 
     watchlist: Mapped[WatchlistModel] = relationship(
         "WatchlistModel", back_populates="alerts", lazy="raise"

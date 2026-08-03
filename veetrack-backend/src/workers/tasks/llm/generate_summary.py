@@ -40,8 +40,8 @@ class SummarySettings(BaseSettings):
 
     database_url: str = ""
     redis_url: str = "redis://localhost:6379/0"
-    llm_local_endpoint: str = "http://localhost:8080/v1/chat/completions"
-    llm_local_model: str = "Qwen/Qwen2.5-3B-Instruct"
+    llm_local_endpoint: str = "http://localhost:11434/v1/chat/completions"
+    llm_local_model: str = "qwen2.5:7b"
     llm_min_articles: int = MIN_ARTICLES_FOR_SUMMARY
 
 
@@ -56,13 +56,25 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
 
     try:
         async with factory() as session:
-            # 1. Count members
+            # 1. Count members and get is_pattern
+            story_meta_row = await session.execute(
+                text("SELECT title, is_pattern FROM stories WHERE id = :sid"),
+                {"sid": story_id},
+            )
+            story_meta_result = story_meta_row.first()
+            if story_meta_result is None:
+                return {"status": "skipped", "reason": "story_not_found"}
+            
+            story_title = str(story_meta_result.title or "")
+            is_pattern = bool(story_meta_result.is_pattern)
+
             count_row = await session.execute(
                 text("SELECT COUNT(*) FROM story_articles WHERE story_id = :sid"),
                 {"sid": story_id},
             )
             member_count = int(count_row.scalar() or 0)
-            if member_count < settings.llm_min_articles:
+            if member_count < settings.llm_min_articles and not is_pattern:
+                # Fast path skips if neither large nor flagged
                 logger.info(
                     "generate_summary.too_few_articles",
                     story_id=story_id,
@@ -70,15 +82,7 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
                 )
                 return {"status": "skipped", "reason": "too_few_articles"}
 
-            # 2. Load story title
-            story_row = await session.execute(
-                text("SELECT title FROM stories WHERE id = :id"),
-                {"id": story_id},
-            )
-            story_result = story_row.first()
-            if story_result is None:
-                return {"status": "skipped", "reason": "story_not_found"}
-            story_title = str(story_result[0] or "")
+            # 2. (Handled above)
 
             # 3. Load articles (most recent first, cap at 10)
             art_rows = await session.execute(
@@ -123,9 +127,31 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
             GenerateExecutiveSummary,
         )
         from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
-        from app.infrastructure.llm.vllm_client import VllmClient
+        from app.infrastructure.llm.ollama_client import OllamaClient
 
-        local_client = VllmClient(
+        from app.infrastructure.llm.tools.get_entity_background import get_entity_background
+        from app.infrastructure.llm.tools.get_related_past_briefs import get_related_past_briefs
+        
+        async def _get_entity_background(args: dict[str, Any]) -> str:
+            async def _query(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+                async with factory() as q_session:
+                    res = await q_session.execute(text(sql), params)
+                    return [dict(row._mapping) for row in res.all()]
+            return await get_entity_background(args, _query)
+            
+        async def _get_related_past_briefs(args: dict[str, Any]) -> str:
+            async def _query(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+                async with factory() as q_session:
+                    res = await q_session.execute(text(sql), params)
+                    return [dict(row._mapping) for row in res.all()]
+            return await get_related_past_briefs(args, _query)
+
+        tools = {
+            "get_entity_background": _get_entity_background,
+            "get_related_past_briefs": _get_related_past_briefs,
+        }
+
+        local_client = OllamaClient(
             model=settings.llm_local_model,
             endpoint=settings.llm_local_endpoint,
         )
@@ -137,7 +163,7 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
         )
         use_case = GenerateExecutiveSummary(
             gateway=gateway,
-            min_articles=settings.llm_min_articles,
+            tools=tools,
         )
 
         article_inputs = [
@@ -153,6 +179,8 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
             story_title=story_title,
             articles=article_inputs,
             entity_names=entity_names,
+            primary_entity_id=primary_entity_id,
+            is_pattern=is_pattern,
         )
 
         if result.skipped:
@@ -169,8 +197,8 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
                 text(
                     "INSERT INTO story_insights "
                     "  (id, story_id, what_happened, why_happened, "
-                    "   generated_at, model_used, token_cost) "
-                    "VALUES (:id, :sid, :what, :why, :gen_at, :model, :cost)"
+                    "   generated_at, model_used, token_cost, reasoning_trace) "
+                    "VALUES (:id, :sid, :what, :why, :gen_at, :model, :cost, :trace)"
                 ),
                 {
                     "id": insight_id,
@@ -180,6 +208,7 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
                     "gen_at": datetime.now(UTC),
                     "model": result.model_used,
                     "cost": result.token_cost,
+                    "trace": result.reasoning_trace,
                 },
             )
 

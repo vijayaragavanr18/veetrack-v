@@ -18,10 +18,12 @@ function SearchOverlay({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [time, setTime] = useState(searchParams.get("time") ?? "all");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setQuery(searchParams.get("q") ?? "");
+    setTime(searchParams.get("time") ?? "all");
   }, [searchParams]);
 
   if (!open) return null;
@@ -31,7 +33,7 @@ function SearchOverlay({
     const q = query.trim();
     if (!q) return;
     startTransition(() => {
-      router.push(`/feed?q=${encodeURIComponent(q)}`);
+      router.push(`/feed?q=${encodeURIComponent(q)}&time=${time}`);
       onClose();
     });
   }
@@ -43,28 +45,52 @@ function SearchOverlay({
       aria-modal="true"
       aria-label="Search"
     >
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-        <form onSubmit={handleSubmit} className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden />
-          <input
-            autoFocus
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search any topic, company, or person…"
-            className="w-full rounded-full border border-input bg-muted/50 pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
-          />
-          {isPending && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" aria-hidden />
-          )}
-        </form>
-        <button
-          onClick={onClose}
-          className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Close search"
-        >
-          <X className="h-5 w-5" aria-hidden />
-        </button>
+      <div className="flex flex-col gap-3 px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-3">
+          <form onSubmit={handleSubmit} className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden />
+            <input
+              autoFocus
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search any topic, company, or person…"
+              className="w-full rounded-full border border-input bg-muted/50 pl-9 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
+            />
+            {isPending && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" aria-hidden />
+            )}
+          </form>
+          <button
+            onClick={onClose}
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close search"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+
+        {/* Time filters */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {[
+            { id: "all", label: "All Time" },
+            { id: "24h", label: "Past 24h" },
+            { id: "7d", label: "Past Week" },
+            { id: "30d", label: "Past Month" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTime(t.id)}
+              className={`whitespace-nowrap px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                time === t.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pt-5 pb-6">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
@@ -100,8 +126,9 @@ function FeedTopBar() {
   const pathname = usePathname();
   const query = searchParams.get("q")?.trim();
 
-  let title = "For You";
+  let title = "VeeTrack";
   if (query) title = query;
+  else if (pathname.startsWith("/feed")) title = "PR Intelligence";
   else if (pathname.startsWith("/discover")) title = "Discover";
   else if (pathname.startsWith("/alerts")) title = "Alerts";
   else if (pathname.startsWith("/profile")) title = "Profile";

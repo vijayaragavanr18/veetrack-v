@@ -59,8 +59,21 @@ async function _request<T>(
   if (!res.ok) {
     let message = res.statusText;
     try {
-      const body = (await res.json()) as { detail?: string };
-      if (body.detail) message = body.detail;
+      const body = (await res.json()) as { detail?: unknown };
+      if (body.detail) {
+        if (typeof body.detail === "string") {
+          message = body.detail;
+        } else if (Array.isArray(body.detail)) {
+          message = body.detail.map((err: unknown) => {
+            if (typeof err === "object" && err !== null && "msg" in err) {
+              return (err as { msg: string }).msg;
+            }
+            return JSON.stringify(err);
+          }).join(", ");
+        } else {
+          message = JSON.stringify(body.detail);
+        }
+      }
     } catch {
       // ignore JSON parse errors
     }

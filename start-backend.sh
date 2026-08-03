@@ -41,25 +41,25 @@ echo "▶  Running DB migrations..."
 cd veetrack-backend
 PYTHONPATH=src uv run alembic upgrade head 2>/dev/null || true
 
-# ── 3. vLLM server (Qwen for AI summaries + recommendations) ─────────────────
-# Requires: pip install vllm  OR  uv add vllm
-# First run downloads the model (~2GB). Skip with: SKIP_VLLM=1 ./start-backend.sh
-if [ "${SKIP_VLLM}" != "1" ] && command -v python3 &>/dev/null; then
-  if python3 -c "import vllm" 2>/dev/null; then
-    echo "▶  Starting vLLM (Qwen2.5-3B) on http://localhost:8080 ..."
-    python3 -m vllm.entrypoints.openai.api_server \
-      --model Qwen/Qwen2.5-3B-Instruct \
-      --port 8080 \
-      --max-model-len 4096 \
-      --dtype auto \
-      --gpu-memory-utilization 0.88 &
-    PIDS+=($!)
-    sleep 5
+# ── 3. Ollama (Qwen2.5:3b for AI summaries + recommendations) ────────────────
+# Requires: curl -fsSL https://ollama.com/install.sh | sh
+# First run pulls the model (~2GB). Skip with: SKIP_OLLAMA=1 ./start-backend.sh
+if [ "${SKIP_OLLAMA}" != "1" ] && command -v ollama &>/dev/null; then
+  if ! curl -sf http://localhost:11434/ >/dev/null 2>&1; then
+    echo "▶  Starting Ollama daemon on http://localhost:11434 ..."
+    ollama serve &>/dev/null &
+    sleep 2
   else
-    echo "⚠   vLLM not installed — AI summaries/recommendations will be skipped."
-    echo "    To install: pip install vllm  (needs CUDA GPU for best performance)"
-    echo "    Then re-run this script. Or: SKIP_VLLM=1 ./start-backend.sh"
+    echo "▶  Ollama daemon already running."
   fi
+  if ! ollama list | grep -q "qwen2.5:7b"; then
+    echo "▶  Pulling qwen2.5:7b (~2 GB, one-time)..."
+    ollama pull qwen2.5:7b
+  fi
+else
+  echo "⚠   Ollama not installed — AI summaries/recommendations will be skipped."
+  echo "    To install: curl -fsSL https://ollama.com/install.sh | sh"
+  echo "    Then re-run this script. Or: SKIP_OLLAMA=1 ./start-backend.sh"
 fi
 
 # ── 4. FastAPI backend ────────────────────────────────────────────────────────

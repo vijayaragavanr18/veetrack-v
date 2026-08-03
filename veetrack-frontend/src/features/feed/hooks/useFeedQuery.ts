@@ -17,18 +17,18 @@ export interface UseFeedQueryResult {
   usingMockData: boolean;
 }
 
-export function useFeedQuery(entity: string): UseFeedQueryResult {
+export function useFeedQuery(entity: string, time: string = "all"): UseFeedQueryResult {
   const accessToken = useAuthStore((s) => s.accessToken);
 
   // Try authed fetch; fall back to direct (no-auth) fetch for dev convenience
   const query = useInfiniteQuery<FeedResponse, Error>({
-    queryKey: ["feed", entity],
+    queryKey: ["feed", entity, time],
     queryFn: async ({ pageParam }) => {
       const cursor = (pageParam as string | null) ?? null;
       if (accessToken) {
-        return fetchFeed({ entity, cursor, accessToken });
+        return fetchFeed({ entity, cursor, time, accessToken });
       }
-      return fetchFeedDirect(entity, cursor);
+      return fetchFeedDirect(entity, cursor, time);
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,

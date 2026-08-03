@@ -152,6 +152,7 @@ export function adaptApiStory(s: ApiStory): MockStory {
 export interface FeedParams {
   entity: string;
   cursor?: string | null;
+  time?: string;
   limit?: number;
   accessToken: string;
 }
@@ -159,11 +160,13 @@ export interface FeedParams {
 export async function fetchFeed({
   entity,
   cursor,
+  time,
   limit = 25,
   accessToken,
 }: FeedParams): Promise<FeedResponse> {
   const params = new URLSearchParams({ entity });
   if (cursor) params.set("cursor", cursor);
+  if (time && time !== "all") params.set("time", time);
   if (limit !== 25) params.set("limit", String(limit));
   return apiFetch<FeedResponse>(
     `/api/v1/feed?${params.toString()}`,
@@ -175,9 +178,11 @@ export async function fetchFeed({
 export async function fetchFeedDirect(
   entity: string,
   cursor?: string | null,
+  time?: string,
 ): Promise<FeedResponse> {
   const params = new URLSearchParams({ entity: entity });
   if (cursor) params.set("cursor", cursor);
+  if (time && time !== "all") params.set("time", time);
   const res = await fetch(`${API_BASE}/api/v1/feed?${params.toString()}`, {
     credentials: "include",
   });

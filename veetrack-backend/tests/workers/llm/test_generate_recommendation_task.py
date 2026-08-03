@@ -22,9 +22,9 @@ def test_settings_local_model_is_qwen() -> None:
     assert "qwen" in s.llm_local_model.lower()
 
 
-def test_settings_local_endpoint_points_to_vllm() -> None:
+def test_settings_local_endpoint_points_to_ollama() -> None:
     s = RecommendationSettings()
-    assert "8080" in s.llm_local_endpoint or "localhost" in s.llm_local_endpoint
+    assert "11434" in s.llm_local_endpoint or "localhost" in s.llm_local_endpoint
 
 
 def test_settings_threshold_configurable(monkeypatch: pytest.MonkeyPatch) -> None:

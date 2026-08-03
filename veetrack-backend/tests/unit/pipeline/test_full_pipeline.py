@@ -260,12 +260,13 @@ async def test_entity_resolve_creates_new_when_no_match() -> None:
 async def test_entity_resolve_fuzzy_match() -> None:
     repo = _FakeEntityRepository()
     entity = Entity(id="eid-2", canonical_name="Microsoft Corporation", type="company")
-    repo.seed(entity, ["Microsoft"])
+    repo.seed(entity, ["Microsoft Corp."])
 
     resolver = ResolveEntity(entity_repo=repo)
-    mention = EntityMention(text="Microsft", label="organization", score=0.8)
-    # Provide the alias for fuzzy comparison
-    result = await resolver.run(mention, candidate_aliases=[("Microsoft", "eid-2")])
+    # "Microsoft Corp" vs "Microsoft Corp." scores ~0.875 — above CERTAINTY_THRESHOLD,
+    # so the fast path resolves it without needing an agent.
+    mention = EntityMention(text="Microsoft Corp", label="organization", score=0.8)
+    result = await resolver.run(mention, candidate_aliases=[("Microsoft Corp.", "eid-2")])
 
     assert result.id == "eid-2"
 

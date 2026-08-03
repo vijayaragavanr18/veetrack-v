@@ -5,7 +5,7 @@ Concrete implementations of domain interfaces. All I/O lives here.
 **Sub-packages:**
 - `db/` — SQLAlchemy models + async repositories (implements domain repository interfaces)
 - `connectors/` — `SourceConnector` implementations for NewsData.io, TwitterAPI.io, RSS, YouTube
-- `llm/` — `LLMGateway` abstraction + vLLM client + hosted Claude client
+- `llm/` — `LLMGateway` abstraction + hosted Claude client
 - `cache/` — Redis client wrapper
 
 **Rules:**

@@ -69,7 +69,7 @@ export default function Page2Insight({ story }: Props) {
       {pending ? (
         <PendingInsightState />
       ) : (
-        <div className="flex flex-col gap-6 px-5 py-4 overflow-y-auto flex-1">
+        <div className="flex flex-col gap-5 px-5 py-3 overflow-y-auto flex-1 min-h-0">
           {/* What Happened */}
           <section aria-labelledby="what-heading">
             <h3
@@ -111,7 +111,7 @@ export default function Page2Insight({ story }: Props) {
           <InsightMeta
             modelUsed={insight.model_used}
             generatedAt={insight.generated_at}
-            className="mt-auto pt-2 pb-1 justify-center"
+            className="mt-auto pt-1 pb-0 justify-center"
           />
         </div>
       )}

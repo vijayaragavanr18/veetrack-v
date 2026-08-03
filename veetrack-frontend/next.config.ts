@@ -15,8 +15,10 @@ const nextConfig: NextConfig = {
     // Serve hero images in modern formats for smaller payloads.
     formats: ["image/avif", "image/webp"],
     // Cache optimised images in CDN/browser for 1 hour (3600 s).
-    // Hero images don't change once ingested so a 1 h TTL is conservative.
     minimumCacheTTL: 3600,
+    // Allow local SVG placeholders in public/story-images/
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: "https",

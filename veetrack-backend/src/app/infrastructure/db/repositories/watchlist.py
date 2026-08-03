@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.watchlist import AlertRecord, Watchlist
-from app.domain.exceptions import ConflictError, NotFoundError
+from app.domain.exceptions import ConflictError, NotFoundError, ForbiddenError
 from app.infrastructure.db.models.alert import AlertModel
 from app.infrastructure.db.models.watchlist import WatchlistModel
 
@@ -29,6 +29,9 @@ def _alert_to_domain(row: AlertModel) -> AlertRecord:
         sent_at=row.sent_at if row.sent_at else datetime.now(UTC),
         channel=row.channel,
         status=row.status,
+        agent_path=row.agent_path or "fast_path",
+        reasoning_trace=row.reasoning_trace or [],
+        user_feedback=row.user_feedback,
     )
 
 
@@ -127,8 +130,40 @@ class SqlAlchemyWatchlistRepository:
             sent_at=alert.sent_at,
             channel=alert.channel,
             status=alert.status,
+            agent_path=alert.agent_path,
+            reasoning_trace=alert.reasoning_trace or None,
+            user_feedback=alert.user_feedback,
         )
         self._session.add(row)
+        await self._session.flush()
+        await self._session.refresh(row)
+        return _alert_to_domain(row)
+
+    async def get_alert_by_id(self, alert_id: str) -> AlertRecord:
+        """Return an AlertRecord by primary key; raise NotFoundError if absent."""
+        row = await self._session.get(AlertModel, alert_id)
+        if row is None:
+            raise NotFoundError(f"Alert {alert_id!r} not found")
+        return _alert_to_domain(row)
+
+    async def record_alert_feedback(
+        self,
+        alert_id: str,
+        user_id: str,
+        feedback: str,
+    ) -> AlertRecord:
+        """Set user_feedback on an alert row.
+
+        Only the workspace member who received the alert (via the watchlist)
+        should be allowed to submit feedback — enforced at the router level via
+        the watchlist owner check.
+        """
+        row = await self._session.get(AlertModel, alert_id)
+        if row is None:
+            raise NotFoundError(f"Alert {alert_id!r} not found")
+        if feedback not in ("useful", "not_useful"):
+            raise ValueError(f"Invalid feedback value {feedback!r}")
+        row.user_feedback = feedback
         await self._session.flush()
         await self._session.refresh(row)
         return _alert_to_domain(row)

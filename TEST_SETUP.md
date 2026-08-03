@@ -300,55 +300,7 @@ This means:
 
 To get AI features working, see section below.
 
----
 
-## Optional: Add vLLM for AI Features
-
-If you want Page 2 (AI Insight) and Page 4 (Recommendations) to work:
-
-### Check GPU
-```bash
-nvidia-smi
-# Need 14GB+ VRAM for Qwen 7B
-# Or use CPU (very slow)
-```
-
-### Start vLLM (separate terminal)
-```bash
-cd /home/vijay/Projects/veetrack-v
-
-# GPU version (recommended)
-.venv/bin/python -m vllm.entrypoints.openai.api_server \
-  --model Qwen/Qwen2.5-7B-Instruct \
-  --port 8001 \
-  --host 127.0.0.1
-
-# CPU version (slow but works without GPU)
-.venv/bin/python -m vllm.entrypoints.openai.api_server \
-  --model Qwen/Qwen2.5-1.5B-Instruct \
-  --port 8001 \
-  --device cpu
-```
-
-### Update backend .env
-```bash
-cd veetrack-backend
-echo "VLLM_BASE_URL=http://localhost:8001/v1" >> .env
-echo "VLLM_MODEL=Qwen/Qwen2.5-7B-Instruct" >> .env
-```
-
-### Start Celery workers (separate terminal)
-```bash
-cd veetrack-backend
-PYTHONPATH=src .venv/bin/celery -A workers.celery_app worker \
-  --loglevel=info \
-  -Q ingestion,nlp,llm,alerts \
-  -c 2
-```
-
-Now when you search, background workers will:
-1. Generate AI summaries (Page 2)
-2. Generate PR recommendations (Page 4)
 
 ---
 
@@ -394,14 +346,7 @@ docker compose -f infra/docker-compose.yml down
 - ✅ Discover trending topics
 - ✅ All navigation
 
-## What Needs vLLM? ⚠️
 
-- ⚠️ AI Insight summaries (Page 2)
-- ⚠️ PR Recommendations (Page 4)
-
-**For mobile testing, you don't need vLLM at all!**
-
----
 
 ## Next: Deploy to Vercel + ngrok
 

@@ -1,9 +1,9 @@
-"""vLLM client — sends OpenAI-compatible chat completion requests to a local vLLM server.
+"""Ollama client — sends OpenAI-compatible chat completion requests to a local Ollama server.
 
 Implements the LLMGateway Protocol defined in domain/interfaces/services.py.
 
 Model tier: "local"
-Default endpoint: http://localhost:8080/v1/chat/completions
+Default endpoint: http://localhost:11434/v1/chat/completions
 """
 
 from __future__ import annotations
@@ -18,12 +18,12 @@ from app.domain.exceptions import ServiceUnavailableError
 
 logger = structlog.get_logger(__name__)
 
-_DEFAULT_ENDPOINT = "http://localhost:8080/v1/chat/completions"
-_REQUEST_TIMEOUT = 120.0  # vLLM inference can be slow on first call
+_DEFAULT_ENDPOINT = "http://localhost:11434/v1/chat/completions"
+_REQUEST_TIMEOUT = 120.0
 
 
-class VllmClient:
-    """Async HTTP client for a locally-running vLLM server (OpenAI-compatible API)."""
+class OllamaClient:
+    """Async HTTP client for a locally-running Ollama server (OpenAI-compatible API)."""
 
     def __init__(
         self,
@@ -64,14 +64,14 @@ class VllmClient:
                 response = await client.post(self._endpoint, json=payload)
                 response.raise_for_status()
         except httpx.HTTPError as exc:
-            logger.error("vllm_client.http_error", error=str(exc), model=self._model)
-            raise ServiceUnavailableError(f"vLLM request failed: {exc}") from exc
+            logger.error("ollama_client.http_error", error=str(exc), model=self._model)
+            raise ServiceUnavailableError(f"Ollama request failed: {exc}") from exc
 
         data = response.json()
         try:
             return str(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError) as exc:
-            raise ServiceUnavailableError(f"vLLM response missing expected fields: {exc}") from exc
+            raise ServiceUnavailableError(f"Ollama response missing expected fields: {exc}") from exc
 
     async def complete_json(
         self,
@@ -92,7 +92,6 @@ class VllmClient:
             temperature=0.0,
         )
         try:
-            # Strip markdown code fences if the model wrapped the JSON
             stripped = text.strip()
             if stripped.startswith("```"):
                 lines = stripped.splitlines()
@@ -100,5 +99,5 @@ class VllmClient:
             return dict(json.loads(stripped))  # type: ignore[arg-type]
         except json.JSONDecodeError as exc:
             raise ServiceUnavailableError(
-                f"vLLM returned invalid JSON: {exc}\nRaw: {text[:200]}"
+                f"Ollama returned invalid JSON: {exc}\nRaw: {text[:200]}"
             ) from exc

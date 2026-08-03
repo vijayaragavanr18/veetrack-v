@@ -28,6 +28,9 @@ import ArticleChatbot from "@/components/ai/ArticleChatbot";
 interface FlipStoryViewerProps {
   stories: MockStory[];
   isLoading?: boolean;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
 }
 
 function PageContent({ story, page }: { story: MockStory; page: 1 | 2 | 3 | 4 }) {
@@ -65,7 +68,13 @@ function PageDots({
   );
 }
 
-export default function FlipStoryViewer({ stories, isLoading = false }: FlipStoryViewerProps) {
+export default function FlipStoryViewer({ 
+  stories, 
+  isLoading = false,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage
+}: FlipStoryViewerProps) {
   const {
     currentStoryIndex, currentPage,
     nextStory, prevStory, nextPage, prevPage, goToPage,
@@ -88,6 +97,28 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
+
+  // Fetch next page when we are 3 stories away from the end
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && fetchNextPage) {
+      if (stories.length - currentStoryIndex <= 3) {
+        fetchNextPage();
+      }
+    }
+  }, [currentStoryIndex, stories.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Prefetch hero images for the next 3 stories
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nextStories = stories.slice(currentStoryIndex + 1, currentStoryIndex + 4);
+    nextStories.forEach(story => {
+      const url = story.primary_article?.hero_image_url;
+      if (url) {
+        const img = new window.Image();
+        img.src = url;
+      }
+    });
+  }, [currentStoryIndex, stories]);
 
   const onStoryChange = useCallback(
     (delta: -1 | 1) => { if (delta === 1) nextStory(stories.length); else prevStory(); },
@@ -163,9 +194,8 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
   // ── Story slots ────────────────────────────────────────────────────────────
   // The "current" slot in the vertical flip contains the horizontal page flip
   const currentStorySlot = (
-    <div className="absolute inset-0 flex flex-col bg-card">
-      <PageDots currentPage={currentPage} onPageClick={goToPage} />
-      <div className="flex-1 relative overflow-hidden">
+    <div className="absolute inset-0 bg-card">
+      <div className="absolute inset-0 overflow-hidden">
         {lockedAxis === "horizontal" ? (
           <HorizontalFlipCard
             currentContent={currentPageContent}
@@ -177,23 +207,32 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
           currentPageContent
         )}
       </div>
+      <div className="absolute top-0 inset-x-0 z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+          <PageDots currentPage={currentPage} onPageClick={goToPage} />
+        </div>
+      </div>
     </div>
   );
 
   const targetStorySlot = targetStory ? (
-    <div className="absolute inset-0 flex flex-col bg-card">
-      <PageDots currentPage={1} onPageClick={goToPage} />
-      <div className="flex-1 overflow-y-auto">
+    <div className="absolute inset-0 bg-card">
+      <div className="absolute inset-0 overflow-y-auto">
         <PageContent story={targetStory} page={1} />
+      </div>
+      <div className="absolute top-0 inset-x-0 z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+          <PageDots currentPage={1} onPageClick={goToPage} />
+        </div>
       </div>
     </div>
   ) : null;
 
   return (
-    <>
+    <div className="flex-1 relative min-h-0 overflow-hidden">
       <div
         ref={containerRef}
-        className="flex-1 relative overflow-hidden select-none cursor-grab active:cursor-grabbing bg-card"
+        className="absolute inset-0 select-none cursor-grab active:cursor-grabbing bg-card"
         style={{ touchAction: "none" }}
         data-testid="story-viewport"
         {...gesture.pointerHandlers}
@@ -207,6 +246,6 @@ export default function FlipStoryViewer({ stories, isLoading = false }: FlipStor
         />
       </div>
       <ArticleChatbot story={story} />
-    </>
+    </div>
   );
 }

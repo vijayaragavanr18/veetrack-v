@@ -51,6 +51,7 @@ app = Celery(
         "workers.tasks.system.ping",
         "workers.tasks.system.purge_old_articles",
         "workers.tasks.search.refresh_tracked_keywords",
+        "workers.tasks.ingestion.watch_scheduled",
     ],
 )
 
@@ -138,6 +139,12 @@ app.conf.update(
         "refresh-tracked-keywords-30min": {
             "task": "tasks.search.refresh_tracked_keywords.run",
             "schedule": crontab(minute="*/30"),
+            "options": {"queue": "ingestion"},
+        },
+        "watch-scheduled-every-15min": {
+            "task": "tasks.ingestion.watch_scheduled.run",
+            "schedule": crontab(minute="*/15"),
+            "kwargs": {"source_id": "newsdata-default"},
             "options": {"queue": "ingestion"},
         },
     },

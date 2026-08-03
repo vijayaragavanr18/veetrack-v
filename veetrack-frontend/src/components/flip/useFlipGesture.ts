@@ -95,7 +95,13 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
           ? currentPage < totalPages
           : currentPage > 1;
 
-      const raw = Math.abs(rawOffset) / distance;
+      // dir=1 means we expected a negative offset (drag UP/LEFT)
+      // dir=-1 means we expected a positive offset (drag DOWN/RIGHT)
+      const expectedMovement = dir === 1 ? -rawOffset : rawOffset;
+      
+      // If they dragged in the opposite direction, clamp at 0
+      let raw = Math.max(0, expectedMovement / distance);
+      
       return hasTarget ? Math.min(raw, 1) : Math.min(raw, 1) * EDGE_DAMP;
     },
     [cardHeight, cardWidth, currentStoryIndex, totalStories, currentPage, totalPages],
@@ -129,6 +135,10 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
         onComplete: () => {
           animating.current = false;
           if (shouldComplete) {
+            // HAPTIC FEEDBACK: Subtle tick on page flip completion
+            if (typeof navigator !== "undefined" && navigator.vibrate) {
+              try { navigator.vibrate(15); } catch (e) {}
+            }
             if (isVertical) onStoryChange(dir);
             else onPageChange(dir);
           }

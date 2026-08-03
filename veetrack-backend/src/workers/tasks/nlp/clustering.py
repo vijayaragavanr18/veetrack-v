@@ -113,12 +113,38 @@ async def _run_reconcile(
 
             # 4. Run pure reconciliation logic
             from app.application.use_cases.clustering.reconcile_clusters import ReconcileClusters
+            from app.infrastructure.llm.ollama_client import OllamaClient
+            from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
+            from app.infrastructure.llm.tools.get_cluster_candidate_articles import get_cluster_candidate_articles
+            from app.infrastructure.llm.tools.get_entity_event_history import get_entity_event_history
+
+            async def _get_cluster_candidate_articles(args: dict[str, Any]) -> str:
+                async def _query(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+                    res = await session.execute(text(sql), params)
+                    return [dict(row._mapping) for row in res.all()]
+                return await get_cluster_candidate_articles(args, _query)
+
+            async def _get_entity_event_history(args: dict[str, Any]) -> str:
+                async def _query(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+                    res = await session.execute(text(sql), params)
+                    return [dict(row._mapping) for row in res.all()]
+                return await get_entity_event_history(args, _query)
+
+            tools = {
+                "get_cluster_candidate_articles": _get_cluster_candidate_articles,
+                "get_entity_event_history": _get_entity_event_history,
+            }
+
+            local_client = OllamaClient(model="qwen2.5:7b", endpoint="http://localhost:11434/v1/chat/completions")
+            gateway = RoutingLLMGateway(local_client=local_client, default_tier="local")
 
             reconciler = ReconcileClusters(
                 min_cluster_size=min_cluster_size,
                 min_samples=min_samples,
+                gateway=gateway,
+                tools=tools,
             )
-            ops = reconciler.reconcile(
+            ops = await reconciler.reconcile(
                 article_ids=article_ids,
                 embeddings=embeddings,
                 article_to_story=article_to_story,
@@ -237,7 +263,15 @@ async def _run_reconcile(
                     )
                 new_count += 1
 
-            # 8. Invalidate centroid cache — incremental task will rebuild on next run
+            # 8. Update pattern flags
+            for sid, is_pattern in ops.is_pattern.items():
+                if is_pattern:
+                    await session.execute(
+                        text("UPDATE stories SET is_pattern = true WHERE id = :sid"),
+                        {"sid": sid},
+                    )
+
+            # 9. Invalidate centroid cache — incremental task will rebuild on next run
             await redis.delete(_CENTROIDS_KEY)
 
         logger.info(

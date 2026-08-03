@@ -99,7 +99,7 @@ _SUCCESS = {
             "link": "https://newsdata.io/1",
             "title": "Tesla News",
             "source_name": "TC",
-            "pubDate": "2026-07-20 13:40:00",
+            "pubDate": "2026-07-22 10:00:00",
             "language": "en",
         }
     ],

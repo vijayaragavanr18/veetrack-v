@@ -37,6 +37,8 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["watchlists"])
 
+_VALID_FEEDBACK = frozenset({"useful", "not_useful"})
+
 # ---------------------------------------------------------------------------
 # In-process alert broadcast registry (replaced by pub-sub in Phase 25+)
 # ---------------------------------------------------------------------------
@@ -74,6 +76,15 @@ async def broadcast_alert(workspace_id: str, payload: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 # Pydantic schemas
 # ---------------------------------------------------------------------------
+
+
+class AlertFeedbackRequest(BaseModel):
+    feedback: str  # "useful" | "not_useful"
+
+
+class AlertFeedbackResponse(BaseModel):
+    alert_id: str
+    user_feedback: str
 
 
 class WatchlistCreateRequest(BaseModel):
@@ -146,6 +157,40 @@ async def delete_watchlist(
     repo = SqlAlchemyWatchlistRepository(session)
     use_case = DeleteWatchlist(repo)
     await use_case.execute(watchlist_id, current_user.id)
+
+
+# ---------------------------------------------------------------------------
+# Alert feedback endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/alerts/{alert_id}/feedback", response_model=AlertFeedbackResponse)
+async def record_alert_feedback(
+    alert_id: str,
+    body: AlertFeedbackRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AlertFeedbackResponse:
+    """Mark an alert as useful or not_useful.
+
+    Any authenticated workspace member can submit feedback on an alert.
+    """
+    if body.feedback not in _VALID_FEEDBACK:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=422,
+            detail=f"feedback must be one of {sorted(_VALID_FEEDBACK)}",
+        )
+    repo = SqlAlchemyWatchlistRepository(session)
+    alert = await repo.record_alert_feedback(
+        alert_id=alert_id,
+        user_id=current_user.id,
+        feedback=body.feedback,
+    )
+    return AlertFeedbackResponse(
+        alert_id=alert.id,
+        user_feedback=alert.user_feedback or "",
+    )
 
 
 # ---------------------------------------------------------------------------

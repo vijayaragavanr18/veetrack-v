@@ -150,7 +150,7 @@ export default function Page4Recommendations({ story }: Props) {
         </span>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4 min-h-0">
         {/* Confident recommendations */}
         {confident.map((rec) => (
           <RecCard key={rec.id} rec={rec} isPendingReview={false} />
@@ -186,7 +186,7 @@ export default function Page4Recommendations({ story }: Props) {
         )}
 
         {/* Advisory disclaimer */}
-        <p className="text-xs text-muted-foreground/60 text-center pt-2 pb-1">
+        <p className="text-xs text-muted-foreground/60 text-center pt-1 pb-0">
           AI-generated suggestions — advisory only. Verify before acting.
         </p>
       </div>

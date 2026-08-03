@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import Base
@@ -40,6 +40,11 @@ class ArticleModel(Base):
     sentiment_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
     dedup_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    dedup_verdict: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    dedup_reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dedup_agent_path: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'fast_path'")
+    )
     ingested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

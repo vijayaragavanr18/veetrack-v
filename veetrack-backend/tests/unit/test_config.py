@@ -17,7 +17,7 @@ def _make_settings(**kwargs: str) -> Settings:
         "environment": "test",
     }
     defaults.update(kwargs)
-    return Settings(**defaults)  # type: ignore[arg-type]
+    return Settings(_env_file=None, **defaults)  # type: ignore[arg-type]
 
 
 def test_settings_loads_with_valid_values() -> None:
@@ -54,6 +54,7 @@ def test_settings_rejects_missing_database_url(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.delenv("DATABASE_URL", raising=False)
     with pytest.raises(ValidationError):
         Settings(  # type: ignore[call-arg]
+            _env_file=None,
             redis_url="redis://localhost",
             jwt_secret="valid-secret",
         )

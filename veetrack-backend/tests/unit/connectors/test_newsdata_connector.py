@@ -132,7 +132,7 @@ _GOOD_RESPONSE = {
             "link": "https://newsdata.io/article/1",
             "title": "Tesla Autopilot Update",
             "source_name": "TechCrunch",
-            "pubDate": "2026-07-20 13:40:00",
+            "pubDate": "2026-07-22 10:00:00",
             "content": "Article body text.",
             "language": "en",
             "image_url": None,

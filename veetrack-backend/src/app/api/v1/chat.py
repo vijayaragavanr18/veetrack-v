@@ -28,7 +28,7 @@ class ArticleChatResponse(BaseModel):
 
 @router.post("/article", response_model=ArticleChatResponse)
 async def chat_about_article(req: ArticleChatRequest) -> ArticleChatResponse:
-    """Answer questions about a specific article using vLLM.
+    """Answer questions about a specific article using Ollama.
 
     Only answers questions directly related to the article content.
     Refuses general knowledge questions.
@@ -50,18 +50,17 @@ STRICT RULES:
 User question: {req.question}"""
 
     try:
-        # Call vLLM via local endpoint
         import httpx
         import os
 
-        vllm_base = os.getenv("VLLM_BASE_URL", "http://localhost:8080/v1")
-        vllm_model = os.getenv("VLLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+        ollama_base = os.getenv("LLM_LOCAL_BASE_URL", "http://localhost:11434/v1")
+        ollama_model = os.getenv("LLM_LOCAL_MODEL", "qwen2.5:7b")
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{vllm_base}/chat/completions",
+                f"{ollama_base}/chat/completions",
                 json={
-                    "model": vllm_model,
+                    "model": ollama_model,
                     "messages": [
                         {"role": "system", "content": "You only answer questions about the provided article. No general knowledge."},
                         {"role": "user", "content": system_prompt},

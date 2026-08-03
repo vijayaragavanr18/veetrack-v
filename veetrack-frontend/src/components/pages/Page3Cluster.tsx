@@ -89,7 +89,7 @@ export default function Page3Cluster({ story }: Props) {
 
       {/* 3. Coverage timeline */}
       <section
-        className="flex-1 overflow-y-auto px-5 pb-4"
+        className="flex-1 overflow-y-auto px-5 pb-2 min-h-0"
         aria-labelledby="coverage-heading"
       >
         <p

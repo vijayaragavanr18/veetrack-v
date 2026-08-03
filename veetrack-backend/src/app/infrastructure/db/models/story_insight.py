@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db.base import Base
@@ -27,5 +28,8 @@ class StoryInsightModel(Base):
     )
     model_used: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     token_cost: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reasoning_trace: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        type_=postgresql.JSONB, nullable=True
+    )
 
     story: Mapped[StoryModel] = relationship("StoryModel", back_populates="insights", lazy="raise")

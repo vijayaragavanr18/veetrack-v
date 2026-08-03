@@ -28,6 +28,6 @@ def test_settings_default_min_articles() -> None:
     assert s.llm_min_articles >= 3
 
 
-def test_settings_local_endpoint_points_to_vllm() -> None:
+def test_settings_local_endpoint_points_to_ollama() -> None:
     s = SummarySettings()
-    assert "8080" in s.llm_local_endpoint or "localhost" in s.llm_local_endpoint
+    assert "11434" in s.llm_local_endpoint or "localhost" in s.llm_local_endpoint

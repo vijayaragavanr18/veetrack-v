@@ -6,6 +6,8 @@ import { devtools } from "zustand/middleware";
 interface FeedState {
   currentStoryIndex: number;
   currentPage: 1 | 2 | 3 | 4;
+  lastQuery: string;
+  lastTime: string;
 }
 
 interface FeedActions {
@@ -16,6 +18,8 @@ interface FeedActions {
   goToPage: (page: 1 | 2 | 3 | 4) => void;
   goToStory: (index: number) => void;
   resetFeed: () => void;
+  setLastQuery: (q: string) => void;
+  setLastTime: (t: string) => void;
 }
 
 export const useFeedStore = create<FeedState & FeedActions>()(
@@ -23,6 +27,11 @@ export const useFeedStore = create<FeedState & FeedActions>()(
     (set) => ({
       currentStoryIndex: 0,
       currentPage: 1,
+      lastQuery: "",
+      lastTime: "all",
+
+      setLastQuery: (q: string) => set({ lastQuery: q }, false, "setLastQuery"),
+      setLastTime: (t: string) => set({ lastTime: t }, false, "setLastTime"),
 
       nextStory: (total: number) =>
         set(

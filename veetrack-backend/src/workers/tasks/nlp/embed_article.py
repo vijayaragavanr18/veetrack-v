@@ -38,8 +38,8 @@ class EmbeddingSettings(BaseSettings):
 
     database_url: str = ""
     embedding_model_id: str = _DEFAULT_EMBEDDING_MODEL
-    # Force CPU so BGE doesn't compete with vLLM for GPU memory.
-    # Set EMBEDDING_DEVICE=cuda to use GPU only when vLLM is not running.
+    # Force CPU so BGE doesn't compete with Ollama for GPU memory.
+    # Set EMBEDDING_DEVICE=cuda to use GPU only when Ollama is not running.
     embedding_device: str = "cpu"
 
 

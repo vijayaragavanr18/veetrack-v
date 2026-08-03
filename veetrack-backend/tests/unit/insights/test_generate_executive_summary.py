@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -23,13 +23,8 @@ def _make_articles(n: int) -> list[ArticleInput]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Happy path
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
-async def test_run_returns_summary_for_sufficient_articles() -> None:
+async def test_run_uses_fast_path_for_few_articles() -> None:
     mock_gateway = AsyncMock()
     mock_gateway.model_name = "test-model"
     mock_gateway.complete_json = AsyncMock(
@@ -39,42 +34,83 @@ async def test_run_returns_summary_for_sufficient_articles() -> None:
         }
     )
 
-    use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=3)
-    result = await use_case.run(
-        story_id="story-1",
-        story_title="Apple News",
-        articles=_make_articles(5),
-        entity_names=["Apple"],
-    )
+    use_case = GenerateExecutiveSummary(gateway=mock_gateway)
+    with patch.object(use_case, "_run_agentic") as mock_agentic:
+        result = await use_case.run(
+            story_id="story-1",
+            story_title="Apple News",
+            articles=_make_articles(2),
+            entity_names=["Apple"],
+        )
+        mock_agentic.assert_not_called()
 
     assert not result.skipped
     assert result.what_happened == "Apple launched a new product."
     assert result.why_happened == "Competition intensified in the market."
     assert result.model_used == "test-model"
     assert result.token_cost > 0
-
-
-# ---------------------------------------------------------------------------
-# Skipped — too few articles
-# ---------------------------------------------------------------------------
+    assert result.reasoning_trace is None
 
 
 @pytest.mark.asyncio
-async def test_run_skips_when_too_few_articles() -> None:
+async def test_run_uses_agentic_path_for_many_articles() -> None:
     mock_gateway = AsyncMock()
     mock_gateway.model_name = "test-model"
 
-    use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=3)
-    result = await use_case.run(
-        story_id="story-1",
-        story_title="Short story",
-        articles=_make_articles(2),
-        entity_names=[],
-    )
+    use_case = GenerateExecutiveSummary(gateway=mock_gateway)
+    with patch.object(use_case, "_run_agentic") as mock_agentic:
+        # Mock what _run_agentic returns so we can assert on it
+        from app.application.use_cases.insights.generate_executive_summary import GenerateSummaryResult
+        mock_agentic.return_value = GenerateSummaryResult(
+            what_happened="Agent What",
+            why_happened="Agent Why",
+            model_used="agent-model",
+            token_cost=100,
+            reasoning_trace=[{"test": "trace"}]
+        )
+        
+        result = await use_case.run(
+            story_id="story-1",
+            story_title="Apple News",
+            articles=_make_articles(3),
+            entity_names=["Apple"],
+        )
+        mock_agentic.assert_called_once()
 
-    assert result.skipped
-    assert "2" in result.skip_reason
-    mock_gateway.complete_json.assert_not_called()
+    assert not result.skipped
+    assert result.what_happened == "Agent What"
+    assert result.why_happened == "Agent Why"
+    assert result.reasoning_trace == [{"test": "trace"}]
+
+
+@pytest.mark.asyncio
+async def test_run_uses_agentic_path_for_pattern_flag() -> None:
+    mock_gateway = AsyncMock()
+    mock_gateway.model_name = "test-model"
+
+    use_case = GenerateExecutiveSummary(gateway=mock_gateway)
+    with patch.object(use_case, "_run_agentic") as mock_agentic:
+        from app.application.use_cases.insights.generate_executive_summary import GenerateSummaryResult
+        mock_agentic.return_value = GenerateSummaryResult(
+            what_happened="Pattern What",
+            why_happened="Pattern Why",
+            model_used="agent-model",
+            token_cost=100,
+            reasoning_trace=[{"test": "pattern_trace"}]
+        )
+        
+        result = await use_case.run(
+            story_id="story-1",
+            story_title="Apple News",
+            articles=_make_articles(1), # Only 1 article!
+            entity_names=["Apple"],
+            is_pattern=True,
+        )
+        mock_agentic.assert_called_once()
+
+    assert not result.skipped
+    assert result.what_happened == "Pattern What"
+    assert result.reasoning_trace == [{"test": "pattern_trace"}]
 
 
 @pytest.mark.asyncio
@@ -82,16 +118,11 @@ async def test_run_skips_empty_articles() -> None:
     mock_gateway = AsyncMock()
     mock_gateway.model_name = "test-model"
 
-    use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=3)
+    use_case = GenerateExecutiveSummary(gateway=mock_gateway)
     result = await use_case.run("s", "title", [], [])
 
     assert result.skipped
     mock_gateway.complete_json.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# Gateway exception propagates
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -100,31 +131,9 @@ async def test_run_propagates_gateway_error() -> None:
     mock_gateway.model_name = "test-model"
     mock_gateway.complete_json = AsyncMock(side_effect=RuntimeError("LLM down"))
 
-    use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=1)
+    use_case = GenerateExecutiveSummary(gateway=mock_gateway)
     with pytest.raises(RuntimeError, match="LLM down"):
-        await use_case.run("s", "t", _make_articles(3), [])
-
-
-# ---------------------------------------------------------------------------
-# Custom min_articles threshold respected
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_min_articles_threshold_configurable() -> None:
-    mock_gateway = AsyncMock()
-    mock_gateway.model_name = "m"
-    mock_gateway.complete_json = AsyncMock(return_value={"what_happened": "x", "why_happened": "y"})
-
-    # min_articles=1 — even single article should run
-    use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=1)
-    result = await use_case.run("s", "t", _make_articles(1), [])
-    assert not result.skipped
-
-
-# ---------------------------------------------------------------------------
-# Prompt version recorded
-# ---------------------------------------------------------------------------
+        await use_case.run("s", "t", _make_articles(2), [])
 
 
 @pytest.mark.asyncio
@@ -133,6 +142,8 @@ async def test_result_includes_prompt_version() -> None:
     mock_gateway.model_name = "m"
     mock_gateway.complete_json = AsyncMock(return_value={"what_happened": "A", "why_happened": "B"})
 
-    use_case = GenerateExecutiveSummary(gateway=mock_gateway, min_articles=3)
-    result = await use_case.run("s", "t", _make_articles(3), ["Entity1"])
+    use_case = GenerateExecutiveSummary(gateway=mock_gateway)
+    with patch.object(use_case, "_run_agentic") as mock_agentic:
+        # We test the fast path to verify prompt version directly returned
+        result = await use_case.run("s", "t", _make_articles(1), ["Entity1"])
     assert result.prompt_version != ""

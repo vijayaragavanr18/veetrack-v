@@ -9,8 +9,8 @@ set -e
 cd "$(dirname "$0")/veetrack-frontend"
 
 echo "▶  Installing deps (if needed)..."
-pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+npx pnpm install --frozen-lockfile 2>/dev/null || npx pnpm install
 
 echo "▶  Starting Next.js on http://localhost:3000 ..."
 echo ""
-pnpm dev
+npx pnpm dev

@@ -48,8 +48,8 @@ class SentimentSettings(BaseSettings):
 
     database_url: str = ""
     sentiment_model_id: str = _DEFAULT_SENTIMENT_MODEL
-    # Force CPU (-1) by default so sentiment doesn't compete with vLLM for GPU memory.
-    # Set SENTIMENT_DEVICE=0 to use GPU when vLLM is not running.
+    # Force CPU (-1) by default so sentiment doesn't compete with Ollama for GPU memory.
+    # Set SENTIMENT_DEVICE=0 to use GPU when Ollama is not running.
     sentiment_device: int = -1
 
 

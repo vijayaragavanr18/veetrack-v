@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, List
 
 
 @dataclass
@@ -30,3 +30,7 @@ class AlertRecord:
     sent_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     channel: str = "websocket"
     status: str = "pending"
+    # Phase 24 revised — decision provenance
+    agent_path: str = "fast_path"  # "fast_path" | "agentic" | "fallback"
+    reasoning_trace: list[Any] = field(default_factory=list)
+    user_feedback: str | None = None  # "useful" | "not_useful" | None

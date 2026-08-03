@@ -104,16 +104,16 @@ export default function ArticleChatbot({ story }: ArticleChatbotProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 active:scale-95 transition-transform"
+        className="absolute bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 active:scale-95 transition-transform"
         aria-label="Open AI assistant"
       >
-        <MessageCircle className="h-6 w-6" aria-hidden />
+        <MessageCircle className="h-5 w-5" aria-hidden />
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-20 right-4 z-40 flex flex-col w-[min(90vw,380px)] h-[500px] rounded-2xl border border-border bg-background shadow-2xl">
+    <div className="absolute bottom-20 right-4 z-40 flex flex-col w-[calc(100%-2rem)] max-w-[380px] h-[500px] rounded-2xl border border-border bg-background shadow-2xl">
       {/* Header */}
       <div className="flex items-center justify-between rounded-t-2xl border-b border-border bg-primary/5 backdrop-blur-sm px-4 py-3">
         <div className="flex items-center gap-2">

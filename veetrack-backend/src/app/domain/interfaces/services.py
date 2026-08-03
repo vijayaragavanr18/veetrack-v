@@ -131,7 +131,7 @@ class EmbeddingService(Protocol):
 
 @runtime_checkable
 class LLMGateway(Protocol):
-    """LLM provider abstraction — swappable between hosted API and local vLLM.
+    """LLM provider abstraction — swappable between hosted API and local Ollama.
 
     Phase 16 adds the concrete implementations. This Protocol ensures the application
     layer is never coupled to a specific provider's SDK.
