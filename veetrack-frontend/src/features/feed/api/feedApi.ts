@@ -185,6 +185,10 @@ export async function fetchFeedDirect(
   if (time && time !== "all") params.set("time", time);
   const res = await fetch(`${API_BASE}/api/v1/feed?${params.toString()}`, {
     credentials: "include",
+    headers: {
+      "Bypass-Tunnel-Reminder": "true",
+      "ngrok-skip-browser-warning": "true",
+    },
   });
   if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
   return res.json() as Promise<FeedResponse>;

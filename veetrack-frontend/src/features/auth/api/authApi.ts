@@ -53,6 +53,8 @@ async function _request<T>(
     credentials: "include", // send httpOnly cookie for refresh
     headers: {
       "Content-Type": "application/json",
+      "Bypass-Tunnel-Reminder": "true",
+      "ngrok-skip-browser-warning": "true",
       ...init.headers,
     },
   });

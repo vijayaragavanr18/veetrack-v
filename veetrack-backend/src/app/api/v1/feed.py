@@ -439,10 +439,8 @@ async def _build_story_from_cluster(
     if len(story_title) > 80:
         story_title = story_title[:77] + "…"
 
-    insight = await _generate_insight(entity_query, headlines, descriptions)
-    recommendations = await _generate_recommendations(
-        entity_query, insight.what_happened, risk_level
-    )
+    insight = None
+    recommendations = []
 
     slug = entity_query.lower().replace(" ", "-")[:30]
     return StoryPayload(
