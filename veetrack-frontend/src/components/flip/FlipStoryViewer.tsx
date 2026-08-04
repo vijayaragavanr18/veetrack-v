@@ -181,12 +181,12 @@ export default function FlipStoryViewer({
 
   // ── Page views ─────────────────────────────────────────────────────────────
   const currentPageContent = (
-    <div className="absolute inset-0 overflow-y-auto bg-card">
+    <div className="absolute inset-0 overflow-y-auto bg-card" style={{ touchAction: "none" }}>
       <PageContent story={story} page={currentPage} />
     </div>
   );
   const targetPageContent = targetPageValid ? (
-    <div className="absolute inset-0 overflow-y-auto bg-card">
+    <div className="absolute inset-0 overflow-y-auto bg-card" style={{ touchAction: "none" }}>
       <PageContent story={story} page={targetPageNum} />
     </div>
   ) : null;

@@ -198,10 +198,57 @@ export function useFlipGesture(opts: FlipGestureOptions): FlipGestureState {
     onPointerUp();
   }, [onPointerUp]);
 
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (animating.current || e.touches.length > 1) return;
+    dragging.current = true;
+    axis.current = null;
+    const touch = e.touches[0];
+    startX.current = touch.clientX;
+    startY.current = touch.clientY;
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!dragging.current || animating.current || e.touches.length > 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX.current;
+    const dy = touch.clientY - startY.current;
+    const dist = Math.hypot(dx, dy);
+
+    if (axis.current === null) {
+      if (dist < AXIS_LOCK_DISTANCE) return;
+      axis.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+      direction.current = axis.current === "vertical"
+        ? (dy < 0 ? 1 : -1)
+        : (dx < 0 ? 1 : -1);
+    }
+
+    const isVertical = axis.current === "vertical";
+    const rawOffset = isVertical ? dy : dx;
+    const p = computeProgress(rawOffset, isVertical, direction.current);
+    progress.set(p);
+  }, [computeProgress, progress]);
+
+  const onTouchEnd = useCallback(() => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    if (axis.current) {
+      finishGesture(axis.current, direction.current, progress.get());
+    }
+  }, [finishGesture, progress]);
+
   return {
     progress,
     axis,
     direction,
-    pointerHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
+    pointerHandlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+      onTouchStart,
+      onTouchMove,
+      onTouchEnd,
+    },
   };
 }
+
