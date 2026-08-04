@@ -24,7 +24,7 @@ Configurable thresholds (named constants, not magic numbers):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import structlog
 
@@ -108,7 +108,6 @@ class AlertEvaluationResult:
 # ── LLMGateway protocol (imported via domain interface, not infrastructure) ──
 
 from app.domain.interfaces.services import LLMGateway  # noqa: E402
-
 
 # ── Use case ─────────────────────────────────────────────────────────────────
 

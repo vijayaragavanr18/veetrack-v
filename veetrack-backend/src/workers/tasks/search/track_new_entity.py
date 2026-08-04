@@ -85,8 +85,8 @@ async def _run_track(keyword: str, settings: TrackSettings) -> dict[str, Any]:
 
         # 2. Trigger connector pulls
         from workers.tasks.ingestion.watch_newsdata import run as newsdata_run
-        from workers.tasks.ingestion.watch_twitter import run as twitter_run
         from workers.tasks.ingestion.watch_rss import run as rss_run
+        from workers.tasks.ingestion.watch_twitter import run as twitter_run
         from workers.tasks.ingestion.watch_youtube import run as youtube_run
 
         # Start NewsData.io fetch

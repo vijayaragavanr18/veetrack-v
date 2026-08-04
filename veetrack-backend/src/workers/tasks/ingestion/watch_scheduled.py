@@ -37,14 +37,14 @@ def _make_watcher_tools(session_factory: Any) -> dict[str, Any]:
             cols = result.keys()
             return [dict(zip(cols, row, strict=True)) for row in result]
 
+    from app.infrastructure.llm.tools.get_entity_aliases import (
+        get_entity_aliases as _aliases,
+    )
     from app.infrastructure.llm.tools.get_entity_recent_activity import (
         get_entity_recent_activity as _recent_activity,
     )
     from app.infrastructure.llm.tools.get_source_quota_status import (
         get_source_quota_status as _quota_status,
-    )
-    from app.infrastructure.llm.tools.get_entity_aliases import (
-        get_entity_aliases as _aliases,
     )
     from app.infrastructure.llm.tools.get_watchlist_priority import (
         get_watchlist_priority as _priority,
@@ -80,8 +80,8 @@ async def _run_batch(source_id: str) -> dict[str, Any]:
         PlanPullBatch,
         WatchedEntity,
     )
-    from app.infrastructure.llm.ollama_client import OllamaClient
     from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
+    from app.infrastructure.llm.ollama_client import OllamaClient
 
     database_url = os.environ.get("DATABASE_URL", "")
     llm_endpoint = os.environ.get(

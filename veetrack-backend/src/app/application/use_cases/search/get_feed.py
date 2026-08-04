@@ -342,7 +342,7 @@ class GetFeed:
                 RecommendationItem(
                     id=f"cold-rec-media-{sid}",
                     audience="Media Relations",
-                    recommendation_text=f"Track press sentiment and key spokesperson opportunities.",
+                    recommendation_text="Track press sentiment and key spokesperson opportunities.",
                     risk_level=r_level,
                     confidence_score=0.75,
                     needs_human_review=False,

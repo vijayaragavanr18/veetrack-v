@@ -9,27 +9,27 @@ Checks that the agent correctly disambiguates mentions using surrounding context
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.domain.entities import Entity, Article, Source
+from app.application.use_cases.entities.resolve_entity import ResolveEntity
+from app.domain.entities import Article, Entity
 from app.domain.interfaces.services import EntityMention
 from app.infrastructure.db.models.source import SourceModel
 from app.infrastructure.db.repositories.article import SqlAlchemyArticleRepository
 from app.infrastructure.db.repositories.entity import SqlAlchemyEntityRepository
-from app.application.use_cases.entities.resolve_entity import ResolveEntity
-from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
-from app.infrastructure.llm.tools.get_candidate_entities import get_candidate_entities
+from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.llm.tools.get_article_context import get_article_context
+from app.infrastructure.llm.tools.get_candidate_entities import get_candidate_entities
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",

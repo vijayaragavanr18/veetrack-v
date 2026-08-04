@@ -22,6 +22,8 @@ that the Celery task then executes against the DB.
 
 from __future__ import annotations
 
+from typing import Any
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -286,16 +288,17 @@ class ReconcileClusters:
         return result
 
     async def _run_agent(self, context: str, cluster_a: str, cluster_b: str) -> tuple[str, list[str], bool]:
+        import structlog
+
+        from app.application.use_cases.shared.agent_loop import (
+            AgentDidNotConvergeError,
+            AgentLoop,
+        )
         from app.application.use_cases.shared.prompts.agentic_clustering import (
             SYSTEM_PROMPT,
             TOOL_NAMES,
             validate_final_answer,
         )
-        from app.application.use_cases.shared.agent_loop import (
-            AgentDidNotConvergeError,
-            AgentLoop,
-        )
-        import structlog
         
         logger = structlog.get_logger(__name__)
 

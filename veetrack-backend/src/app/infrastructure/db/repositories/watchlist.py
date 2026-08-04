@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.watchlist import AlertRecord, Watchlist
-from app.domain.exceptions import ConflictError, NotFoundError, ForbiddenError
+from app.domain.exceptions import ConflictError, NotFoundError
 from app.infrastructure.db.models.alert import AlertModel
 from app.infrastructure.db.models.watchlist import WatchlistModel
 

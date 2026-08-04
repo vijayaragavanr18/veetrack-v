@@ -113,10 +113,14 @@ async def _run_reconcile(
 
             # 4. Run pure reconciliation logic
             from app.application.use_cases.clustering.reconcile_clusters import ReconcileClusters
-            from app.infrastructure.llm.ollama_client import OllamaClient
             from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
-            from app.infrastructure.llm.tools.get_cluster_candidate_articles import get_cluster_candidate_articles
-            from app.infrastructure.llm.tools.get_entity_event_history import get_entity_event_history
+            from app.infrastructure.llm.ollama_client import OllamaClient
+            from app.infrastructure.llm.tools.get_cluster_candidate_articles import (
+                get_cluster_candidate_articles,
+            )
+            from app.infrastructure.llm.tools.get_entity_event_history import (
+                get_entity_event_history,
+            )
 
             async def _get_cluster_candidate_articles(args: dict[str, Any]) -> str:
                 async def _query(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:

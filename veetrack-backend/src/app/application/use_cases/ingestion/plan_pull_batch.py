@@ -19,7 +19,6 @@ Zero infrastructure imports — receives plain data and calls LLMGateway via Pro
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
 
 import structlog
 

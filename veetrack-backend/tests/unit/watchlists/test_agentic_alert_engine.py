@@ -23,15 +23,12 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.application.use_cases.watchlists.evaluate_alerts import (
-    BORDERLINE_THRESHOLD,
-    FAST_PATH_THRESHOLD,
     LOW_CONFIDENCE_THRESHOLD,
     RECENT_ALERT_FATIGUE_COUNT,
     EvaluateAlerts,
     _is_borderline,
     _is_fast_path,
 )
-from app.application.use_cases.shared.agent_loop import AgentDidNotConvergeError
 from app.domain.entities.watchlist import AlertRecord, Watchlist
 from app.domain.exceptions import NotFoundError
 

@@ -26,22 +26,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.application.use_cases.entities.prompts.agentic_entity_resolution import (
+    validate_final_answer,
+)
 from app.application.use_cases.entities.resolve_entity import (
     CERTAINTY_THRESHOLD,
     FUZZY_THRESHOLD,
     ResolveEntity,
     _find_fuzzy_matches,
     is_ambiguous,
-    label_to_entity_type,
     trigram_similarity,
-)
-from app.application.use_cases.entities.prompts.agentic_entity_resolution import (
-    validate_final_answer,
 )
 from app.application.use_cases.shared.agent_loop import AgentDidNotConvergeError
 from app.domain.entities import Entity
 from app.domain.interfaces.services import EntityMention
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -517,7 +515,6 @@ class TestGetArticleContext:
     async def test_context_window_centered_on_offset(self) -> None:
         from app.infrastructure.llm.tools.get_article_context import (
             get_article_context,
-            _CONTEXT_WINDOW_CHARS,
         )
 
         content = "x" * 500 + "MENTION_HERE" + "y" * 500

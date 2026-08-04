@@ -19,16 +19,16 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from app.application.use_cases.recommendations.generate_recommendation import (
+    GenerateRecommendation,
+    _should_run_agentic,
+)
 from app.application.use_cases.recommendations.recommendation_agent import (
     MAX_ITERATIONS,
     AgentLoopError,
     RecommendationAgent,
     _parse_json_response,
     _validate_step,
-)
-from app.application.use_cases.recommendations.generate_recommendation import (
-    GenerateRecommendation,
-    _should_run_agentic,
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -23,17 +23,13 @@ import pytest
 
 from app.application.use_cases.ingestion.plan_pull_batch import (
     PlanPullBatch,
-    PullBatchPlan,
     WatchedEntity,
     _fast_plan,
     _has_thin_entities,
     _is_constrained,
-    QUOTA_CONSTRAINED_THRESHOLD,
-    THIN_ACTIVITY_THRESHOLD,
 )
 from app.application.use_cases.ingestion.prompts.agentic_watcher import validate_final_answer
 from app.application.use_cases.shared.agent_loop import AgentDidNotConvergeError
-
 
 # ── Fake LLM Gateway ──────────────────────────────────────────────────────────
 

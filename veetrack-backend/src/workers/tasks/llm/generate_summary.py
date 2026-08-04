@@ -128,7 +128,6 @@ async def _run_generate(story_id: str, settings: SummarySettings) -> dict[str, A
         )
         from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
         from app.infrastructure.llm.ollama_client import OllamaClient
-
         from app.infrastructure.llm.tools.get_entity_background import get_entity_background
         from app.infrastructure.llm.tools.get_related_past_briefs import get_related_past_briefs
         

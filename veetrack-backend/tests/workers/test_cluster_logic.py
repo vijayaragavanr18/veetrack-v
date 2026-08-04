@@ -12,7 +12,6 @@ import pytest
 
 from workers.tasks.nlp.cluster_article import _cosine_sim, _update_centroid
 
-
 # ---------------------------------------------------------------------------
 # _cosine_sim
 # ---------------------------------------------------------------------------

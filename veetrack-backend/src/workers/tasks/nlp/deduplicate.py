@@ -75,11 +75,11 @@ def _make_dedup_tools(session_factory: Any) -> dict[str, Any]:
             cols = result.keys()
             return [dict(zip(cols, row, strict=True)) for row in result]
 
-    from app.infrastructure.llm.tools.get_candidate_duplicate import (
-        get_candidate_duplicate as _get_candidate,
-    )
     from app.infrastructure.llm.tools.get_article_publish_gap import (
         get_article_publish_gap as _get_gap,
+    )
+    from app.infrastructure.llm.tools.get_candidate_duplicate import (
+        get_candidate_duplicate as _get_candidate,
     )
 
     async def get_candidate_duplicate(args: dict[str, Any]) -> str:
@@ -111,8 +111,8 @@ async def _run_agentic_dedup(
         AgentDidNotConvergeError,
         AgentLoop,
     )
-    from app.infrastructure.llm.ollama_client import OllamaClient
     from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
+    from app.infrastructure.llm.ollama_client import OllamaClient
 
     local_client = OllamaClient(
         model=settings.llm_local_model,
@@ -201,10 +201,8 @@ async def _run_deduplicate(
 
     from app.application.use_cases.pipeline.deduplicate import (
         DISTINCT_THRESHOLD,
-        DUPLICATE_THRESHOLD,
         VERDICT_DISTINCT,
         VERDICT_DUPLICATE,
-        VERDICT_GRAY_ZONE,
         classify_similarity,
     )
 

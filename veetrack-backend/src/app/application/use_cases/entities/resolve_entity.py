@@ -28,8 +28,9 @@ It never imports from infrastructure, fastapi, sqlalchemy, or redis.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Any
 
 import structlog
 

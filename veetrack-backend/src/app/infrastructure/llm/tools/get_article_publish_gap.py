@@ -10,7 +10,9 @@ Read-only.
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from datetime import UTC
+from typing import Any
 
 DbQuery = Callable[[str, dict[str, Any]], Awaitable[list[dict[str, Any]]]]
 
@@ -56,13 +58,11 @@ async def get_article_publish_gap(
     # Try to compute numeric gap if timestamps are datetime objects
     gap_description = "unknown"
     try:
-        from datetime import timezone
 
         def _to_utc(ts: object) -> object:
             if hasattr(ts, "tzinfo") and ts.tzinfo is None:  # type: ignore[union-attr]
-                import datetime
 
-                return ts.replace(tzinfo=timezone.utc)  # type: ignore[union-attr]
+                return ts.replace(tzinfo=UTC)  # type: ignore[union-attr]
             return ts
 
         ta = _to_utc(ts_a)

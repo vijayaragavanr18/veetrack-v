@@ -9,28 +9,27 @@ Checks that the agent correctly adjudicates low-confidence and sarcastic sentime
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.application.use_cases.sentiment.analyze_sentiment import AnalyzeSentiment
 from app.domain.entities import Article, Entity
 from app.domain.interfaces.services import SentimentResult
 from app.infrastructure.db.models.source import SourceModel
 from app.infrastructure.db.repositories.article import SqlAlchemyArticleRepository
 from app.infrastructure.db.repositories.entity import SqlAlchemyEntityRepository
-from app.application.use_cases.sentiment.analyze_sentiment import AnalyzeSentiment
-from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
+from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.llm.tools.get_classifier_breakdown import get_classifier_breakdown
 from app.infrastructure.llm.tools.get_entity_sentiment_baseline import get_entity_sentiment_baseline
-
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
@@ -156,6 +155,7 @@ async def test_agentic_sentiment_sarcastic_article(db_session: AsyncSession) -> 
     body_res = SentimentResult(label="negative", score=0.55)
 
     from unittest.mock import patch
+
     from app.application.use_cases.shared.agent_loop import AgentLoop
 
     original_run = AgentLoop.run

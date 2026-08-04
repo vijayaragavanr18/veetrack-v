@@ -9,6 +9,8 @@ Architecture notes:
 
 from __future__ import annotations
 
+from typing import Any
+
 from dataclasses import dataclass
 
 import structlog
@@ -148,14 +150,16 @@ class GenerateExecutiveSummary:
         system_prompt: str,
         user_prompt: str,
     ) -> GenerateSummaryResult:
-        from app.application.use_cases.shared.prompts.agentic_executive_brief import (
-            SYSTEM_PROMPT as AGENT_SYSTEM_PROMPT,
-            TOOL_NAMES,
-            validate_final_answer,
-        )
         from app.application.use_cases.shared.agent_loop import (
             AgentDidNotConvergeError,
             AgentLoop,
+        )
+        from app.application.use_cases.shared.prompts.agentic_executive_brief import (
+            SYSTEM_PROMPT as AGENT_SYSTEM_PROMPT,
+        )
+        from app.application.use_cases.shared.prompts.agentic_executive_brief import (
+            TOOL_NAMES,
+            validate_final_answer,
         )
 
         loop = AgentLoop(

@@ -28,10 +28,9 @@ class PurgeSettings(BaseSettings):
 
 
 async def _run_purge(settings: PurgeSettings) -> dict[str, Any]:
+    from redis.asyncio import Redis
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-    from redis.asyncio import Redis
 
     engine = create_async_engine(settings.database_url, echo=False)
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

@@ -9,9 +9,6 @@ from __future__ import annotations
 
 import hashlib
 
-import pytest
-
-
 # ---------------------------------------------------------------------------
 # watch_newsdata._make_dedup_hash
 # ---------------------------------------------------------------------------
@@ -82,7 +79,7 @@ def test_rss_dedup_hash_matches_manual_sha256() -> None:
     """RSS hash matches manual sha256(source_id:external_id)."""
     from workers.tasks.ingestion.watch_rss import _make_dedup_hash
 
-    expected = hashlib.sha256("rss-feed:entry-42".encode()).hexdigest()
+    expected = hashlib.sha256(b"rss-feed:entry-42").hexdigest()
     assert _make_dedup_hash("entry-42", "rss-feed") == expected
 
 

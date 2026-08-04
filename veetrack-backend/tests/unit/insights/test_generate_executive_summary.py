@@ -60,7 +60,9 @@ async def test_run_uses_agentic_path_for_many_articles() -> None:
     use_case = GenerateExecutiveSummary(gateway=mock_gateway)
     with patch.object(use_case, "_run_agentic") as mock_agentic:
         # Mock what _run_agentic returns so we can assert on it
-        from app.application.use_cases.insights.generate_executive_summary import GenerateSummaryResult
+        from app.application.use_cases.insights.generate_executive_summary import (
+            GenerateSummaryResult,
+        )
         mock_agentic.return_value = GenerateSummaryResult(
             what_happened="Agent What",
             why_happened="Agent Why",
@@ -90,7 +92,9 @@ async def test_run_uses_agentic_path_for_pattern_flag() -> None:
 
     use_case = GenerateExecutiveSummary(gateway=mock_gateway)
     with patch.object(use_case, "_run_agentic") as mock_agentic:
-        from app.application.use_cases.insights.generate_executive_summary import GenerateSummaryResult
+        from app.application.use_cases.insights.generate_executive_summary import (
+            GenerateSummaryResult,
+        )
         mock_agentic.return_value = GenerateSummaryResult(
             what_happened="Pattern What",
             why_happened="Pattern Why",

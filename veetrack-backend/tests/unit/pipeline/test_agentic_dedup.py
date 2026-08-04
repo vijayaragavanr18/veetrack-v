@@ -13,6 +13,7 @@ No infrastructure imports. All I/O via fakes.
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
 
 import pytest
@@ -27,7 +28,6 @@ from app.application.use_cases.pipeline.deduplicate import (
     compute_jaccard_similarity,
 )
 from app.application.use_cases.pipeline.prompts.agentic_dedup import validate_final_answer
-
 
 # ── classify_similarity ───────────────────────────────────────────────────────
 
@@ -55,8 +55,8 @@ class TestClassifySimilarity:
 
     def test_boundary_values_are_deterministic(self) -> None:
         # Ensure thresholds are fixed at expected values
-        assert DISTINCT_THRESHOLD == pytest.approx(0.55)
-        assert DUPLICATE_THRESHOLD == pytest.approx(0.75)
+        assert pytest.approx(0.55) == DISTINCT_THRESHOLD
+        assert pytest.approx(0.75) == DUPLICATE_THRESHOLD
 
 
 # ── compute_jaccard_similarity ────────────────────────────────────────────────
@@ -174,8 +174,8 @@ class TestGetCandidateDuplicate:
 
     async def test_long_content_is_truncated(self) -> None:
         from app.infrastructure.llm.tools.get_candidate_duplicate import (
-            get_candidate_duplicate,
             _CONTENT_PREVIEW_CHARS,
+            get_candidate_duplicate,
         )
 
         long_content = "x" * (_CONTENT_PREVIEW_CHARS + 100)
@@ -222,11 +222,12 @@ class TestGetArticlePublishGap:
         assert "missing" in result.lower() or "could not" in result.lower()
 
     async def test_datetime_objects_compute_gap(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from app.infrastructure.llm.tools.get_article_publish_gap import get_article_publish_gap
 
-        t1 = datetime(2026, 7, 21, 10, 0, 0, tzinfo=timezone.utc)
-        t2 = datetime(2026, 7, 21, 10, 30, 0, tzinfo=timezone.utc)
+        t1 = datetime(2026, 7, 21, 10, 0, 0, tzinfo=UTC)
+        t2 = datetime(2026, 7, 21, 10, 30, 0, tzinfo=UTC)
 
         async def _q(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
             return [
@@ -241,11 +242,12 @@ class TestGetArticlePublishGap:
         assert "30m" in result or "wire" in result.lower() or "same-hour" in result.lower()
 
     async def test_multiday_gap_signals_distinct(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from app.infrastructure.llm.tools.get_article_publish_gap import get_article_publish_gap
 
-        t1 = datetime(2026, 7, 18, 10, 0, 0, tzinfo=timezone.utc)
-        t2 = datetime(2026, 7, 21, 10, 0, 0, tzinfo=timezone.utc)  # 3 days later
+        t1 = datetime(2026, 7, 18, 10, 0, 0, tzinfo=UTC)
+        t2 = datetime(2026, 7, 21, 10, 0, 0, tzinfo=UTC)  # 3 days later
 
         async def _q(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
             return [

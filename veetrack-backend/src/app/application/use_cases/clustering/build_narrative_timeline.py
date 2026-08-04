@@ -6,7 +6,8 @@ identifying key turning points.
 
 from __future__ import annotations
 
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import structlog
 
@@ -30,14 +31,14 @@ class BuildNarrativeTimeline:
         story_id: str,
     ) -> dict[str, Any]:
         """Run the agentic path to build a narrative timeline."""
+        from app.application.use_cases.shared.agent_loop import (
+            AgentDidNotConvergeError,
+            AgentLoop,
+        )
         from app.application.use_cases.shared.prompts.agentic_clustering import (
             SYSTEM_PROMPT,
             TOOL_NAMES,
             validate_final_answer,
-        )
-        from app.application.use_cases.shared.agent_loop import (
-            AgentDidNotConvergeError,
-            AgentLoop,
         )
 
         loop = AgentLoop(

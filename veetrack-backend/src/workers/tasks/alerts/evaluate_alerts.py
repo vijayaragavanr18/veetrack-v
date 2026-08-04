@@ -32,17 +32,17 @@ def _make_alert_tools(session_factory: Any) -> dict[str, Any]:
             cols = result.keys()
             return [dict(zip(cols, row, strict=True)) for row in result]
 
+    from app.infrastructure.llm.tools.get_alert_feedback_history import (
+        get_alert_feedback_history as _feedback,
+    )
     from app.infrastructure.llm.tools.get_entity_alert_history import (
         get_entity_alert_history as _entity_history,
-    )
-    from app.infrastructure.llm.tools.get_watchlist_preferences import (
-        get_watchlist_preferences as _wl_prefs,
     )
     from app.infrastructure.llm.tools.get_story_risk_context import (
         get_story_risk_context as _story_ctx,
     )
-    from app.infrastructure.llm.tools.get_alert_feedback_history import (
-        get_alert_feedback_history as _feedback,
+    from app.infrastructure.llm.tools.get_watchlist_preferences import (
+        get_watchlist_preferences as _wl_prefs,
     )
 
     async def get_entity_alert_history(args: dict[str, Any]) -> str:
@@ -79,13 +79,12 @@ async def _run(
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
     from app.application.use_cases.watchlists.evaluate_alerts import (
-        EvaluateAlerts,
         RECENT_ALERT_WINDOW_HOURS,
-        RECENT_ALERT_FATIGUE_COUNT,
+        EvaluateAlerts,
     )
     from app.infrastructure.db.repositories.watchlist import SqlAlchemyWatchlistRepository
-    from app.infrastructure.llm.ollama_client import OllamaClient
     from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
+    from app.infrastructure.llm.ollama_client import OllamaClient
 
     database_url = os.environ.get("DATABASE_URL", "")
     llm_endpoint = os.environ.get(

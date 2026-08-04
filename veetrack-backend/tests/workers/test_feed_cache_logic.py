@@ -6,15 +6,13 @@ No real Postgres, no real Redis, no Celery broker.
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from workers.tasks.search.build_feed_cache import CacheSettings, _FEED_KEY_PREFIX, _build_payload
-
+from workers.tasks.search.build_feed_cache import _FEED_KEY_PREFIX, CacheSettings, _build_payload
 
 # ---------------------------------------------------------------------------
 # Helper: build a CacheSettings with a non-empty database_url so the guard
@@ -94,7 +92,7 @@ async def test_build_payload_writes_to_redis() -> None:
     entity_row.first.return_value = SimpleNamespace()
     entity_row.first.return_value = ("TestCorp",)  # type: ignore[assignment]
 
-    _now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    _now = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
 
     story_ns = SimpleNamespace(
         id="story-1",

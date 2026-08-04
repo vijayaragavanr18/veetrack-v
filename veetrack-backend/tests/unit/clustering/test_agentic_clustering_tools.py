@@ -1,9 +1,12 @@
 """Unit tests for agentic clustering tools."""
 
-import pytest
 from unittest.mock import AsyncMock
 
-from app.infrastructure.llm.tools.get_cluster_candidate_articles import get_cluster_candidate_articles
+import pytest
+
+from app.infrastructure.llm.tools.get_cluster_candidate_articles import (
+    get_cluster_candidate_articles,
+)
 from app.infrastructure.llm.tools.get_entity_event_history import get_entity_event_history
 
 

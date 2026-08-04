@@ -50,8 +50,9 @@ STRICT RULES:
 User question: {req.question}"""
 
     try:
-        import httpx
         import os
+
+        import httpx
 
         ollama_base = os.getenv("LLM_LOCAL_BASE_URL", "http://localhost:11434/v1")
         ollama_model = os.getenv("LLM_LOCAL_MODEL", "qwen2.5:7b")

@@ -264,7 +264,7 @@ async def _generate_insight(
     """Call Ollama to generate a rich executive-brief insight for a story cluster."""
     ollama = OllamaClient(model=_OLLAMA_MODEL, endpoint=_OLLAMA_ENDPOINT, timeout=90.0)
     combined = "\n".join(
-        f"- {h}: {d[:200]}" for h, d in zip(headlines, descriptions) if h
+        f"- {h}: {d[:200]}" for h, d in zip(headlines, descriptions, strict=False) if h
     )
     prompt = (
         f"You are a senior PR analyst writing executive intelligence briefs.\n\n"
@@ -450,7 +450,7 @@ async def _build_story_from_cluster(
     )
     recommendations = [
         RecommendationItem(
-            id=f"fast-rec-comm",
+            id="fast-rec-comm",
             audience="Communications Team",
             recommendation_text=f"Monitor immediate media coverage regarding {entity_query} and prepare reactive talking points.",
             risk_level=risk_level,
@@ -458,7 +458,7 @@ async def _build_story_from_cluster(
             needs_human_review=False,
         ),
         RecommendationItem(
-            id=f"fast-rec-exec",
+            id="fast-rec-exec",
             audience="Executive Team",
             recommendation_text=f"Review key stakeholders and briefing notes on developments surrounding {entity_query}.",
             risk_level=risk_level,
@@ -466,7 +466,7 @@ async def _build_story_from_cluster(
             needs_human_review=False,
         ),
         RecommendationItem(
-            id=f"fast-rec-media",
+            id="fast-rec-media",
             audience="Media Relations",
             recommendation_text=f"Track sentiment across major news outlets covering {entity_query}.",
             risk_level=risk_level,

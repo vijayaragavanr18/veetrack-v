@@ -11,7 +11,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from fastapi.testclient import TestClient
 
 from app.application.use_cases.search.feed_types import (

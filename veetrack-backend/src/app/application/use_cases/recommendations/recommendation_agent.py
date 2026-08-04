@@ -55,6 +55,8 @@ TOOL_NAMES = {
 
 from app.application.use_cases.shared.agent_loop import (  # noqa: E402
     parse_json_response as _parse_json_response_impl,
+)
+from app.application.use_cases.shared.agent_loop import (
     validate_step as _validate_step_impl,
 )
 

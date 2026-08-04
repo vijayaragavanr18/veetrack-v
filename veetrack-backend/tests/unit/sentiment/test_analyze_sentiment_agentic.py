@@ -1,7 +1,8 @@
 """Unit tests for the agentic adjudication path in AnalyzeSentiment."""
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from app.application.use_cases.sentiment.analyze_sentiment import AnalyzeSentiment
 from app.domain.interfaces.services import SentimentResult

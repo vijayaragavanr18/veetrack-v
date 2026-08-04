@@ -11,31 +11,30 @@ Checks that:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import uuid
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy import text
-import numpy as np
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.application.use_cases.clustering.build_narrative_timeline import BuildNarrativeTimeline
 from app.domain.entities import Article, Entity
 from app.infrastructure.db.models.source import SourceModel
 from app.infrastructure.db.repositories.article import SqlAlchemyArticleRepository
 from app.infrastructure.db.repositories.entity import SqlAlchemyEntityRepository
-from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
-from app.infrastructure.llm.tools.get_cluster_candidate_articles import get_cluster_candidate_articles
+from app.infrastructure.llm.ollama_client import OllamaClient
+from app.infrastructure.llm.tools.get_cluster_candidate_articles import (
+    get_cluster_candidate_articles,
+)
 from app.infrastructure.llm.tools.get_entity_event_history import get_entity_event_history
-from app.application.use_cases.clustering.build_narrative_timeline import BuildNarrativeTimeline
-from app.application.use_cases.clustering.reconcile_clusters import ReconcileClusters
-
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",

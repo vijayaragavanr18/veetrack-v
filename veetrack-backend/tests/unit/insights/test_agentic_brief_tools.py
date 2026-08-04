@@ -1,7 +1,8 @@
 """Unit tests for agentic executive brief tools."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from app.infrastructure.llm.tools.get_entity_background import get_entity_background
 from app.infrastructure.llm.tools.get_related_past_briefs import get_related_past_briefs

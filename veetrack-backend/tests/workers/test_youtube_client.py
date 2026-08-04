@@ -13,7 +13,6 @@ from workers.connectors.youtube import (
     _parse_date,
 )
 
-
 # ---------------------------------------------------------------------------
 # _parse_date
 # ---------------------------------------------------------------------------
@@ -107,6 +106,7 @@ async def test_fetch_returns_articles_from_apidirect() -> None:
     ]
 
     import fakeredis.aioredis as fakeredis
+
     from workers.connectors.base import RedisRateLimiter
 
     redis = fakeredis.FakeRedis()
@@ -128,6 +128,7 @@ async def test_fetch_returns_articles_from_apidirect() -> None:
 @pytest.mark.asyncio
 async def test_fetch_empty_result_when_apidirect_returns_nothing() -> None:
     import fakeredis.aioredis as fakeredis
+
     from workers.connectors.base import RedisRateLimiter
 
     redis = fakeredis.FakeRedis()

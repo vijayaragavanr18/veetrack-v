@@ -1,14 +1,13 @@
 """Integration tests for the Agentic Executive Brief (Phase 16)."""
 
+import asyncio
+import uuid
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+
+import httpx
 import pytest
 import pytest_asyncio
-import asyncio
-from datetime import datetime, UTC
-import uuid
-import os
-import httpx
-from collections.abc import AsyncGenerator
-
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -16,9 +15,8 @@ from app.application.use_cases.insights.generate_executive_summary import (
     ArticleInput,
     GenerateExecutiveSummary,
 )
-from app.infrastructure.llm.ollama_client import OllamaClient
 from app.infrastructure.llm.llm_gateway import RoutingLLMGateway
-from workers.tasks.llm.generate_summary import _run_generate, SummarySettings
+from app.infrastructure.llm.ollama_client import OllamaClient
 
 DATABASE_URL = "postgresql+asyncpg://veetrack:devpassword@localhost:5432/veetrack"
 
@@ -144,9 +142,10 @@ async def test_agentic_executive_brief(
     current_story_id = setup_entity_and_stories["current_story_id"]
     entity_id = setup_entity_and_stories["entity_id"]
     
+    from typing import Any
+
     from app.infrastructure.llm.tools.get_entity_background import get_entity_background
     from app.infrastructure.llm.tools.get_related_past_briefs import get_related_past_briefs
-    from typing import Any
     
     async def _get_entity_background(args: dict[str, Any]) -> str:
         async def _query(sql: str, params: dict[str, Any]) -> list[dict[str, Any]]:
