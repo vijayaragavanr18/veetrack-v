@@ -140,19 +140,7 @@ export default function FlipStoryViewer({
     onPageChange,
   });
 
-  // ── Reduced motion fallback ────────────────────────────────────────────────
-  if (reduced) {
-    const story = stories[currentStoryIndex];
-    if (!story) return null;
-    return (
-      <div className="flex-1 flex flex-col bg-card overflow-hidden">
-        <PageDots currentPage={currentPage} onPageClick={goToPage} />
-        <div className="flex-1 overflow-y-auto">
-          <PageContent story={story} page={currentPage} />
-        </div>
-      </div>
-    );
-  }
+  // ── Reduced motion check: 3D flip physics active ─────────────────────────────
 
   if (isLoading) {
     return <div className="flex-1 bg-card animate-pulse" />;

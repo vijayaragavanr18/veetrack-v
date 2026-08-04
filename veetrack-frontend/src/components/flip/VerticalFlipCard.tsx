@@ -82,6 +82,9 @@ export default function VerticalFlipCard({
         position: "absolute",
         inset: 0,
         perspective: "1700px",
+        WebkitPerspective: "1700px",
+        transformStyle: "preserve-3d",
+        WebkitTransformStyle: "preserve-3d",
         touchAction: "none",
       }}
     >

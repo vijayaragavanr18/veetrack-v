@@ -42,13 +42,26 @@ export default function FlipPanel({
     ? `rotateX(${angleDeg}deg)`
     : `rotateY(${angleDeg}deg)`;
 
+  const originStr =
+    origin === "top"
+      ? "center top"
+      : origin === "bottom"
+      ? "center bottom"
+      : origin === "left"
+      ? "left center"
+      : "right center";
+
   return (
     <div
       style={{
         position: "absolute",
         inset: 0,
-        transformOrigin: `center ${origin}`,
+        transformOrigin: originStr,
+        WebkitTransformOrigin: originStr,
         transform: rotate,
+        WebkitTransform: rotate,
+        transformStyle: "preserve-3d",
+        WebkitTransformStyle: "preserve-3d",
         backfaceVisibility: "hidden",
         WebkitBackfaceVisibility: "hidden",
         filter: `brightness(${brightness.toFixed(3)})`,

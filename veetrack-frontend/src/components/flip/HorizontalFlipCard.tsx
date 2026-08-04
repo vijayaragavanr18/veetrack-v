@@ -81,7 +81,15 @@ export default function HorizontalFlipCard({
   }
 
   return (
-    <div style={{ position: "absolute", inset: 0, perspective: "2500px" }}>
+    <div style={{
+      position: "absolute",
+      inset: 0,
+      perspective: "2500px",
+      WebkitPerspective: "2500px",
+      transformStyle: "preserve-3d",
+      WebkitTransformStyle: "preserve-3d",
+      touchAction: "none"
+    }}>
       {/* ── Static back layers ─────────────────────────────── */}
       <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: "50%", overflow: "hidden", zIndex: 0 }}>
         <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: "200%" }}>
