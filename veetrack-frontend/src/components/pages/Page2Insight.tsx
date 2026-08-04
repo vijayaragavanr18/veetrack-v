@@ -56,63 +56,84 @@ export default function Page2Insight({ story }: Props) {
   const pending = isPending(story);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header — always visible even during pending */}
-      <header className="flex items-center gap-2 px-5 pt-5 pb-4 border-b border-border/50 shrink-0">
-        <h2 className="text-lg font-semibold leading-none">AI Insight</h2>
-        <span className="ml-auto">
-          <SentimentBadge label={story.sentiment_label} className="text-xs" />
-        </span>
+    <div className="flex flex-col h-full bg-card">
+      {/* Header — Executive Brief Title */}
+      <header className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/50 shrink-0 bg-secondary/20">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+          <h2 className="text-sm font-bold tracking-wider uppercase text-foreground">
+            Executive AI Brief
+          </h2>
+        </div>
+        <SentimentBadge label={story.sentiment_label} className="text-xs" />
       </header>
 
-      {/* Body — pending or real content */}
+      {/* Body — Rich scrollable executive layout */}
       {pending ? (
         <PendingInsightState />
       ) : (
-        <div className="flex flex-col gap-5 px-5 py-3 overflow-y-auto flex-1 min-h-0">
-          {/* What Happened */}
-          <section aria-labelledby="what-heading">
-            <h3
-              id="what-heading"
-              className="text-xs font-semibold text-primary uppercase tracking-widest mb-2"
-            >
-              What Happened
-            </h3>
-            <p className="text-sm leading-relaxed text-foreground">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 min-h-0">
+          {/* Key Facts / What Happened Card */}
+          <section className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card p-4 space-y-2 shadow-sm">
+            <div className="flex items-center gap-2 text-primary">
+              <span className="text-xs font-bold uppercase tracking-widest">
+                What Happened
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-foreground font-medium">
               {insight.what_happened}
             </p>
           </section>
 
-          {/* Why It Happened */}
-          <section aria-labelledby="why-heading">
-            <h3
-              id="why-heading"
-              className="text-xs font-semibold text-primary uppercase tracking-widest mb-2"
-            >
-              Why It Happened
-            </h3>
-            <p className="text-sm leading-relaxed text-foreground">
+          {/* Strategic Context / Why It Happened Card */}
+          <section className="rounded-xl border border-border bg-card p-4 space-y-2 shadow-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                Why It Matters & Strategic Impact
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               {insight.why_happened}
             </p>
           </section>
 
-          {/* Aggregate Sentiment card */}
-          <section
-            className="rounded-lg border border-border bg-card px-4 py-3 space-y-3"
-            aria-label="Aggregate sentiment"
-          >
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-              Aggregate Sentiment
+          {/* Key Takeaways Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 space-y-1">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Risk Level
+              </span>
+              <p className="text-xs font-bold capitalize text-foreground flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${story.risk_level === 'high' || story.risk_level === 'critical' ? 'bg-destructive' : 'bg-emerald-500'}`} />
+                {story.risk_level} Priority
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/80 bg-secondary/30 p-3 space-y-1">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Media Coverage
+              </span>
+              <p className="text-xs font-bold text-foreground">
+                {story.article_count} Major Outlets
+              </p>
+            </div>
+          </div>
+
+          {/* Aggregate Sentiment Meter Card */}
+          <section className="rounded-xl border border-border bg-card px-4 py-3 space-y-2 shadow-sm">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+              Public & Press Sentiment Spectrum
             </p>
             <SentimentBar score={story.sentiment_score} />
           </section>
 
-          {/* Attribution footer */}
-          <InsightMeta
-            modelUsed={insight.model_used}
-            generatedAt={insight.generated_at}
-            className="mt-auto pt-1 pb-0 justify-center"
-          />
+          {/* Attribution Footer */}
+          <div className="pt-2 pb-1">
+            <InsightMeta
+              modelUsed={insight.model_used}
+              generatedAt={insight.generated_at}
+              className="justify-center"
+            />
+          </div>
         </div>
       )}
     </div>

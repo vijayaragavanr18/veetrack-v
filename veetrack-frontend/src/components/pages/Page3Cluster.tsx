@@ -135,28 +135,33 @@ export default function Page3Cluster({ story }: Props) {
                   </div>
 
                   {/* Article content */}
-                  <div className="flex-1 min-w-0 pb-3">
+                  <div className="flex-1 min-w-0 pb-4">
                     {article.url ? (
                       <a
                         href={article.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-start gap-1 group font-medium text-sm leading-snug hover:text-primary transition-colors"
+                        className="inline-flex items-start gap-1 group font-semibold text-sm leading-snug hover:text-primary transition-colors text-foreground"
                         aria-label={`${article.headline} — opens in new tab`}
                       >
                         <span className="line-clamp-2">{article.headline}</span>
                         <ExternalLink
-                          className="h-3 w-3 shrink-0 mt-0.5 text-muted-foreground/50 group-hover:text-primary transition-colors"
+                          className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/60 group-hover:text-primary transition-colors"
                           aria-hidden
                         />
                       </a>
                     ) : (
-                      <p className="font-medium text-sm leading-snug line-clamp-2">
+                      <p className="font-semibold text-sm leading-snug line-clamp-2 text-foreground">
                         {article.headline}
                       </p>
                     )}
-                    <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                      <span className="font-medium">{article.publisher}</span>
+                    {article.content_preview && (
+                      <p className="text-xs text-muted-foreground/90 line-clamp-2 mt-1 leading-relaxed bg-secondary/20 p-2 rounded border border-border/40">
+                        "{article.content_preview}"
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
+                      <span className="font-semibold text-primary/80">{article.publisher}</span>
                       <span aria-hidden>·</span>
                       <PublishedTime iso={article.published_at} />
                     </div>
