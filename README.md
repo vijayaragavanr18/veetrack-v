@@ -1,103 +1,82 @@
-# VeeTrack: AI-Powered PR Intelligence Platform
+# VeeTrack: Autonomous Agentic PR Intelligence Platform
 
-**VeeTrack** is a next-generation media intelligence platform designed specifically for PR professionals, executives, and communications teams. It replaces traditional, cluttered spreadsheet dashboards (like Meltwater or Brandwatch) with a premium, mobile-first **"Flipboard-style"** 3D swipe UI.
+**VeeTrack** is a next-generation media intelligence platform designed for PR professionals, executives, and communications teams. It replaces traditional dashboard spreadsheets with a premium, mobile-first **3D swipe UI** (Flipboard-style). 
 
-The platform continuously monitors global news (via NewsData API), clusters related articles into cohesive storylines, and uses local, on-premise AI models (via Ollama) to automatically generate **Executive Briefs** ("What Happened" and "Why It Matters") alongside tailored **PR Recommendations**.
-
----
-
-## 🏗️ System Architecture
-
-The codebase is structured as a modern full-stack monorepo, divided into two main environments:
-
-### 1. `veetrack-frontend` (Next.js 15)
-- **Framework**: Next.js 15 (App Router), React 19, TypeScript
-- **Styling**: TailwindCSS 4, Framer Motion
-- **Design System**: Mobile-first, dark-mode native, high-end editorial typography.
-- **Physics Engine**: Custom 3D DOM manipulation inside `src/components/flip/` handling gestural math (`useFlipGesture.ts`) and CSS 3D transforms (`VerticalFlipCard.tsx` / `HorizontalFlipCard.tsx`) to recreate physical magazine page turns.
-- **State**: Zustand for global state, React Query for API caching.
-
-### 2. `veetrack-backend` (FastAPI + Celery + Ollama)
-- **API (FastAPI)**: High-performance asynchronous API serving the frontend feed and handling search queries.
-- **Workers (Celery)**: Background task workers managing a sophisticated NLP pipeline. It periodically ingests news, extracts entities, and triggers AI analysis asynchronously.
-- **AI Engine (Ollama)**: Uses `qwen2.5:7b` running locally for 100% private, on-premise generation of Executive Briefings and PR strategy recommendations.
-- **Database**: PostgreSQL with `pgvector` for similarity search, accessed via SQLAlchemy ORM.
-- **Cache & Message Broker**: Redis.
+Under the hood, VeeTrack is powered by a **5-Agent Autonomous HiveMind Swarm**. These specialized agents continuously monitor global news, semantically deduplicate content, cluster related articles into cohesive storylines, and use local on-premise AI models (via Ollama) to autonomously generate **Executive Briefings** and **PR Action Plans**.
 
 ---
 
-## 📂 Core Handoff Directory Guide
+## 🧠 The 5-Agent HiveMind Architecture
 
-For future developers or agencies taking over this repository, here are the most critical directories:
+VeeTrack's intelligence is driven by a lightweight, custom Python orchestration layer rather than heavy frameworks, maximizing performance and deterministic control over local LLM outputs. 
 
-### Frontend (`veetrack-frontend/`)
-* **`src/app/(feed)/`**: The core shell of the application, including the layout wrapper, bottom navigation, and search overlay.
-* **`src/components/flip/`**: The crown jewel of the UI. This folder contains all the complex 3D math and gesture tracking required to make the pages "flip" like a real book. Modify `flipMath.ts` to adjust the physics.
-* **`src/components/pages/`**: The individual pages within a story. 
-  * `Page1Original.tsx`: The primary article view with the hero image.
-  * `Page2Insight.tsx`: The AI-generated Executive Brief.
-  * `Page3Cluster.tsx`: The topic timeline / related articles.
-  * `Page4Recommendations.tsx`: The AI PR strategy recommendations.
-* **`src/components/ui/`**: Reusable design system components (Engagement Row, Badges, etc).
-
-### Backend (`veetrack-backend/`)
-* **`src/app/api/v1/feed.py`**: The main API endpoint. It contains the logic for the "Fast Path" (fetching from Redis) and the "Live Fallback Path" (fetching live from NewsData and generating AI responses on the fly).
-* **`src/workers/tasks/`**: Contains the Celery background tasks that power the data engine:
-  * `ingestion/watch_scheduled.py`: The cron job that wakes up and pulls new articles for tracked entities.
-  * `llm/generate_summary.py`: The task that asks Ollama to write the Executive Brief.
-* **`src/app/infrastructure/db/models/`**: SQLAlchemy schema definitions (Articles, Stories, Entities).
-* **`alembic/versions/`**: Database migration history.
+1. **🕵️ Scout Agent (Web Discovery)**: Scours the web using the NewsData API and dynamic MCP tool registration. It identifies breaking news and trending topics across global media outlets.
+2. **🛡️ Gatekeeper Agent (Semantic Deduplication)**: Receives raw articles and runs them through a Vector DB (`pgvector`). It ensures we don't process duplicate stories by matching semantic embeddings.
+3. **🧬 Synthesizer Agent (Clustering)**: Uses HDBSCAN and cosine similarity to group deduplicated articles into unified "Story Clusters" based on contextual narrative.
+4. **📊 Analyst Agent (Executive Briefs)**: Processes full clusters and commands the local Ollama LLM to draft concise, high-level "What Happened" and "Why It Matters" executive summaries.
+5. **👔 Executive PR Agent (Strategy & Comms)**: Analyzes the crisis/risk level of the story and generates tactical response plans, press release angles, and internal talking points for the C-Suite.
 
 ---
 
-## 🚀 How to Run Locally
+## 🚀 How to Clone and Run Locally (Cross-Platform)
 
-We have provided two unified startup scripts at the root of the repository to make booting the stack effortless.
+VeeTrack is containerized with Docker, meaning it will run consistently across **Linux, macOS, and Windows (via WSL2)**.
 
-### Prerequisites
-1. **Docker**: Must be installed and running.
-2. **Node.js (v20+)**: Required for the frontend.
-3. **Ollama**: Required for AI features. Install via `curl -fsSL https://ollama.com/install.sh | sh`.
+### Step 1: Prerequisites
+- **Git**: To clone the repository.
+- **Docker & Docker Compose**: Required for running the PostgreSQL and Redis containers.
+- **Node.js (v20+)**: Required for running the Next.js Turbopack frontend.
+- **Ollama**: Required for running the local on-premise AI models. [Download Ollama here](https://ollama.com/download).
 
-### Environment Variables
-Copy `.env.example` to `.env` in the root directory and fill in any required API keys (e.g., `NEWSDATA_API_KEY`).
+### Step 2: Clone the Repository
+```bash
+git clone https://github.com/vijayaragavanr18/veetrack-v.git
+cd veetrack-v
+```
 
-### Booting the Stack
+### Step 3: Configure Environment Variables
+Copy the example environment variables file to set up your local configuration:
+```bash
+cp .env.example .env
+```
+Open `.env` and add your `NEWSDATA_API_KEY`. 
 
-**Terminal 1: Start the Backend & Database**
+> ⚠️ **IMPORTANT: Laptop Performance Tuning**
+> By default, the app is configured to use the `qwen2.5:7b` AI model. If you are running this on a laptop with limited RAM or without a dedicated GPU, you can experience severe slowdowns.
+> 
+> **To optimize for standard laptops:**
+> Open your `.env` file and change `LLM_LOCAL_MODEL=qwen2.5:7b` to `LLM_LOCAL_MODEL=qwen2.5:3b`. 
+> Also, update the `MODEL` variable in `start-ollama.sh` to `"qwen2.5:3b"`. This smaller 3B parameter model runs blazingly fast on almost any modern laptop!
+
+### Step 4: Boot the Stack (No Code Modification Required!)
+
+We have provided two unified startup scripts at the root of the repository to boot the entire stack effortlessly.
+
+**Terminal 1: Start the Backend & Databases**
 ```bash
 ./start-backend.sh
 ```
-*This script will:*
-1. Boot Postgres and Redis via Docker.
-2. Run database migrations.
-3. Start the Ollama daemon and pull the AI model automatically.
-4. Start the FastAPI server (Port 8000).
-5. Start the Celery workers.
+*What this does automatically:*
+1. Boots Postgres (with `pgvector`) and Redis via Docker Compose.
+2. Runs database migrations (Alembic).
+3. Verifies the Ollama daemon and automatically pulls your configured Qwen model.
+4. Starts the FastAPI server on port `8000` and boots up the Celery background worker agents.
 
 **Terminal 2: Start the Frontend**
 ```bash
 ./start-frontend.sh
 ```
-*This script will start the Next.js development server on Port 3000.*
+*What this does automatically:*
+1. Installs all required Node.js dependencies (`pnpm install`).
+2. Starts the Next.js 15 Turbopack development server on `http://localhost:3000`.
+
+### Step 5: View the App
+Open your web browser and navigate to **[http://localhost:3000](http://localhost:3000)**. 
+*(Tip: Press `F12` and click the "Device Toolbar" icon in Chrome to simulate the premium mobile 3D swiping experience!)*
 
 ---
 
 ## ☁️ Deployment Guide
 
-### Frontend Deployment (Vercel)
-The frontend is optimized for deployment on Vercel.
-1. Connect this GitHub repository to a new Vercel project.
-2. Vercel will automatically detect the Next.js framework inside `/veetrack-frontend`.
-3. In Vercel Environment Variables, set `NEXT_PUBLIC_API_URL` to point to your live backend (e.g., `https://api.yourdomain.com/api/v1`).
-4. Deploy!
-
-### Backend Deployment (AWS / GCP / DigitalOcean)
-Because the backend runs heavy AI models locally (Ollama/Qwen) and uses Docker for Postgres/Redis, it is best deployed on a VPS or cloud instance with decent RAM (8GB+ recommended) rather than a serverless platform.
-1. Clone the repository to the server.
-2. Ensure Docker and Ollama are installed.
-3. Set your production `.env` file.
-4. Run `./start-backend.sh` (or wrap it in a systemd service).
-5. Use Nginx or Caddy to expose port 8000 via a secure HTTPS domain.
-
-*(For local testing on mobile devices, you can securely tunnel the backend using `npx localtunnel --port 8000` or `ssh -R 80:localhost:8000 nokey@localhost.run` and paste the resulting URL into your Vercel Environment Variables).*
+- **Frontend (Vercel)**: The frontend is fully optimized for edge deployment on Vercel. Simply connect your GitHub repository to Vercel, and set the `NEXT_PUBLIC_API_URL` environment variable to point to your hosted backend API.
+- **Backend (VPS / Cloud Instance)**: Because the backend runs heavy NLP workloads, Celery workers, and local Ollama models, it is best deployed on a VPS (AWS EC2, DigitalOcean Droplet, etc.) with at least 8GB+ RAM. Use `docker-compose` to manage the containers in production and expose the FastAPI service via an Nginx reverse proxy.
