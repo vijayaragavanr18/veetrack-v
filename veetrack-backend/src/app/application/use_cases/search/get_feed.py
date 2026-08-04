@@ -311,16 +311,55 @@ class GetFeed:
         payloads: list[StoryPayload] = []
         for r in rows:
             sid = str(r["id"])
+            st_title = str(r["title"] or "")
+            st_articles = articles_by_story.get(sid, [])
+            lead_text = (st_articles[0].content_preview if st_articles else st_title).strip()
+            if len(lead_text) > 280:
+                lead_text = lead_text[:277] + "…"
+            ext_insight = InsightItem(
+                what_happened=f"Latest development: {lead_text}",
+                why_happened=f"Strategic analysis and media impact for {keyword} is currently being tracked.",
+                model_used="extractive-fastpass",
+            )
+            r_level = str(r["risk_level"] or "low")
+            ext_recs = [
+                RecommendationItem(
+                    id=f"cold-rec-comm-{sid}",
+                    audience="Communications Team",
+                    recommendation_text=f"Monitor coverage of {keyword} and align reactive talking points.",
+                    risk_level=r_level,
+                    confidence_score=0.75,
+                    needs_human_review=False,
+                ),
+                RecommendationItem(
+                    id=f"cold-rec-exec-{sid}",
+                    audience="Executive Team",
+                    recommendation_text=f"Review strategic updates regarding {keyword}.",
+                    risk_level=r_level,
+                    confidence_score=0.75,
+                    needs_human_review=False,
+                ),
+                RecommendationItem(
+                    id=f"cold-rec-media-{sid}",
+                    audience="Media Relations",
+                    recommendation_text=f"Track press sentiment and key spokesperson opportunities.",
+                    risk_level=r_level,
+                    confidence_score=0.75,
+                    needs_human_review=False,
+                ),
+            ]
             payloads.append(
                 StoryPayload(
                     id=sid,
-                    title=str(r["title"] or ""),
+                    title=st_title,
                     status=str(r["status"] or "active"),
-                    risk_level=str(r["risk_level"] or "low"),
+                    risk_level=r_level,
                     primary_entity_id=str(r["primary_entity_id"]),
                     entity_name=str(r["entity_name"] or keyword),
                     article_count=int(r["article_count"] or 0),
-                    articles=articles_by_story.get(sid, []),
+                    articles=st_articles,
+                    insight=ext_insight,
+                    recommendations=ext_recs,
                     updated_at=r["updated_at"].isoformat() if r["updated_at"] else "",
                 )
             )

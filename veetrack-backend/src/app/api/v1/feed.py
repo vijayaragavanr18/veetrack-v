@@ -439,8 +439,41 @@ async def _build_story_from_cluster(
     if len(story_title) > 80:
         story_title = story_title[:77] + "…"
 
-    insight = None
-    recommendations = []
+    # Tier 1: Instant Extractive Fastpass Brief
+    lead_desc = (descriptions[0] if descriptions else story_title).strip()
+    if len(lead_desc) > 280:
+        lead_desc = lead_desc[:277] + "…"
+    insight = InsightItem(
+        what_happened=f"Latest development: {lead_desc}",
+        why_happened=f"Strategic and media impact analysis for {entity_query} is currently being tracked.",
+        model_used="extractive-fastpass",
+    )
+    recommendations = [
+        RecommendationItem(
+            id=f"fast-rec-comm",
+            audience="Communications Team",
+            recommendation_text=f"Monitor immediate media coverage regarding {entity_query} and prepare reactive talking points.",
+            risk_level=risk_level,
+            confidence_score=0.75,
+            needs_human_review=False,
+        ),
+        RecommendationItem(
+            id=f"fast-rec-exec",
+            audience="Executive Team",
+            recommendation_text=f"Review key stakeholders and briefing notes on developments surrounding {entity_query}.",
+            risk_level=risk_level,
+            confidence_score=0.75,
+            needs_human_review=False,
+        ),
+        RecommendationItem(
+            id=f"fast-rec-media",
+            audience="Media Relations",
+            recommendation_text=f"Track sentiment across major news outlets covering {entity_query}.",
+            risk_level=risk_level,
+            confidence_score=0.75,
+            needs_human_review=False,
+        ),
+    ]
 
     slug = entity_query.lower().replace(" ", "-")[:30]
     return StoryPayload(
@@ -514,6 +547,9 @@ async def _live_fetch_fallback(entity_query: str) -> FeedPage | None:
         reverse=True
     )
 
+    # Tier 2 & Tier 3: Schedule background Ollama qwen2.5:7b enrichment
+    asyncio.create_task(_async_enrich_with_ollama(entity_query, stories))
+
     return FeedPage(
         stories=stories,
         next_cursor=None,
@@ -521,6 +557,23 @@ async def _live_fetch_fallback(entity_query: str) -> FeedPage | None:
         entity_name=entity_query,
         path="cold",
     )
+
+
+async def _async_enrich_with_ollama(entity_query: str, stories: list[StoryPayload]) -> None:
+    """Background Tier-2 task: enrich stories with Ollama qwen2.5:7b executive briefs."""
+    try:
+        logger.info("feed.hybrid_pipeline.tier2_start", entity=entity_query, stories_count=len(stories))
+        for story in stories[:3]:  # Enrich top 3 stories
+            headlines = [a.headline for a in story.articles]
+            descriptions = [a.content_preview for a in story.articles]
+            rich_insight = await _generate_insight(entity_query, headlines, descriptions)
+            rich_recs = await _generate_recommendations(entity_query, rich_insight.what_happened, story.risk_level)
+            story.insight = rich_insight
+            if rich_recs:
+                story.recommendations = rich_recs
+        logger.info("feed.hybrid_pipeline.tier2_done", entity=entity_query)
+    except Exception as exc:
+        logger.warning("feed.hybrid_pipeline.tier2_failed", error=str(exc))
 
 
 # ---------------------------------------------------------------------------
