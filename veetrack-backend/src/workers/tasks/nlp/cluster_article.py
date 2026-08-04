@@ -96,8 +96,14 @@ async def _load_centroids_from_db(session: Any) -> dict[str, dict[str, Any]]:
     )
     result: dict[str, dict[str, Any]] = {}
     for row in rows:
+        raw_vec = row.cluster_centroid
+        if isinstance(raw_vec, str):
+            centroid_list = json.loads(raw_vec)
+        else:
+            centroid_list = list(raw_vec)
+            
         result[row.id] = {
-            "centroid": list(row.cluster_centroid),
+            "centroid": centroid_list,
             "count": int(row.cnt),
         }
     return result
