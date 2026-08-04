@@ -225,13 +225,17 @@ export default function FlipStoryViewer({
         data-testid="story-viewport"
         {...gesture.pointerHandlers}
       >
-        <VerticalFlipCard
-          currentContent={currentStorySlot}
-          targetContent={lockedAxis === "vertical" ? targetStorySlot : null}
-          direction={dir}
-          progress={lockedAxis === "vertical" ? gesture.progress : idleProgress}
-          cardHeight={cardSize.height}
-        />
+        {lockedAxis === "vertical" ? (
+          <VerticalFlipCard
+            currentContent={currentStorySlot}
+            targetContent={targetStorySlot}
+            direction={dir}
+            progress={gesture.progress}
+            cardHeight={cardSize.height}
+          />
+        ) : (
+          currentStorySlot
+        )}
       </div>
       <ArticleChatbot story={story} />
     </div>
