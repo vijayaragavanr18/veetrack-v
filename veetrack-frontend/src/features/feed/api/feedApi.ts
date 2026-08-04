@@ -6,7 +6,7 @@
  * components so we don't need to touch Page1–4 components in this phase.
  */
 
-import { apiFetch } from "@/features/auth/api/authApi";
+import { apiFetch, getApiBaseUrl } from "@/features/auth/api/authApi";
 import type { MockStory, MockArticle, MockRecommendation } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -183,7 +183,8 @@ export async function fetchFeedDirect(
   const params = new URLSearchParams({ entity: entity });
   if (cursor) params.set("cursor", cursor);
   if (time && time !== "all") params.set("time", time);
-  const res = await fetch(`${API_BASE}/api/v1/feed?${params.toString()}`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/v1/feed?${params.toString()}`, {
     credentials: "include",
     headers: {
       "Bypass-Tunnel-Reminder": "true",

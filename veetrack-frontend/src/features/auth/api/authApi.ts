@@ -7,8 +7,21 @@
  * apiFetch() is a thin wrapper that retries once with a token refresh on 401.
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const LIVE_TUNNEL_URL = "https://feeds-deborah-adventure-june.trycloudflare.com";
+
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  ) {
+    return LIVE_TUNNEL_URL;
+  }
+  return "http://localhost:8000";
+}
 
 export interface AuthUser {
   id: string;
@@ -48,7 +61,8 @@ async function _request<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     credentials: "include", // send httpOnly cookie for refresh
     headers: {
